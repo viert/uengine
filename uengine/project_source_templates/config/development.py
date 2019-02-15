@@ -1,5 +1,5 @@
 documents_per_page = 10
-app_secret_key = "InfoS3c.h3llYe4h.b3.N1c3"
+app_secret_key = "_some_secret_key_"
 
 flask_settings = {
     "SESSION_COOKIE_NAME": "_{{ project_name }}_session_id"

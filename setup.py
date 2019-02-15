@@ -11,7 +11,16 @@ setup(
     license="MIT",
     packages=find_packages(),
     include_package_data=True,
-    install_requires=["jinja2", "flask", "pymongo", "lazy_object_proxy", "line_profiler", "ipython"],
+    install_requires=[
+        "jinja2",
+        "flask",
+        "pymongo",
+        "lazy_object_proxy",
+        "line_profiler",
+        "ipython",
+        "pylint",
+        "mongomock"
+    ],
     entry_points={
         "console_scripts": [
             "uengine=uengine.__main__:main",

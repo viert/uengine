@@ -23,12 +23,12 @@ def create_project(args):
         for f in files:
             if f.endswith(".pyc"):
                 continue
+            if "models" in dir and f in ["user.py", "token.py"] and not args.auth:
+                continue
             dst_file = os.path.join(dst_dir, f)
             tmpl = env.get_template(os.path.join(dir, f))
             with open(dst_file, "w") as outf:
                 outf.write(tmpl.render(project_name=project_name, auth=args.auth))
-
-
 
 def main():
     parser = argparse.ArgumentParser(prog="uengine")
