@@ -1,0 +1,7 @@
+pymongo
+flask
+ipython
+line_profiler
+jinja2
+lazy_object_proxy
+bumpversion

@@ -1,0 +1,4 @@
+mongomock
+requests
+
+-r {{ project_name }}/requirements.txt
