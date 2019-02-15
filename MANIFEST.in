@@ -1,0 +1,7 @@
+include uengine/project_source_templates/__appdir__/controllers/*
+include uengine/project_source_templates/__appdir__/models/*
+include uengine/project_source_templates/__appdir__/tests/*
+include uengine/project_source_templates/__appdir__/*
+include uengine/project_source_templates/commands/*
+include uengine/project_source_templates/config/*
+include uengine/project_source_templates/*
