@@ -12,16 +12,13 @@ class ApiError(Exception):
     def __init__(self, message, status_code=None, payload=None):
         Exception.__init__(self)
         self.message = message
-        if status_code is not None:
+        if status_code:
             self.status_code = status_code
-        self.payload = payload
+        self.payload = payload or {}
 
     def to_dict(self):
-        data = {
-            "error": self.message
-        }
-        if self.payload:
-            data["data"] = self.payload
+        data = self.payload
+        data["error"] = self.message
         return data
 
     def __repr__(self):
@@ -36,8 +33,8 @@ class AuthenticationError(ApiError):
     status_code = 401
     auth_url = None
 
-    def __init__(self, message="you must be authenticated first"):
-        ApiError.__init__(self, message)
+    def __init__(self, message="you must be authenticated first", payload=None):
+        ApiError.__init__(self, message, payload=payload)
         if self.auth_url is None:
             oauth_cfg = ctx.cfg.get("oauth")
             if oauth_cfg:
@@ -49,11 +46,11 @@ class AuthenticationError(ApiError):
                         f"client_id={client_id}&scope=user_info&redirect_uri={callback_url}"
 
     def to_dict(self):
-        return {
-            "error": self.message,
-            "state": "logged out",
-            "oauth": self.auth_url
-        }
+        data = super().to_dict()
+        data["oauth"] = self.auth_url
+        if "state" not in data:
+            data["state"] = "logged out"
+        return data
 
 
 class ConfigurationError(SystemExit):
