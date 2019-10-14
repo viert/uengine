@@ -44,7 +44,7 @@ class AuthController(Blueprint):
 
     def set_current_user(self):
         if ctx.envtype == 'development':
-            username = os.getenv("INFOSEC_DEV_USER")
+            username = os.getenv("DEV_USER")
             if username is not None:
                 g.user = User.get(username)
                 if g is not None:

@@ -7,7 +7,7 @@ from .auth_controller import AuthController
 
 
 def gen_main_ctrl(app):
-    main_ctrl = AuthController("main", __name__, require_auth=True)
+    main_ctrl = AuthController("main", __name__, require_auth=False)
 
     def index():
         routes = []
@@ -20,30 +20,15 @@ def gen_main_ctrl(app):
         return json_response({"routes": routes})
 
     def app_info():
-        results = {
-            "app": {
-                "name": "ex-ya.ru"
-            }
-        }
-        if hasattr(app, "VERSION"):
-            results["app"]["version"] = app.VERSION
-        else:
-            results["app"]["version"] = "unknown"
-
-        results["mongodb"] = {
-            "meta": ctx.db.meta.conn.client.server_info(),
-            "shards": {}
-        }
+        results = dict(
+            app={"name": "{{project_name}}", "version": app.version},
+            mongodb=ctx.db.mongodb_info(),
+            cache={"type": ctx.cache.__class__.__name__, "active": check_cache()},
+            flask_version=flask.__version__
+        )
 
         for shard_id, shard in ctx.db.shards.items():
             results["mongodb"]["shards"][shard_id] = shard.conn.client.server_info()
-
-        results["flask_version"] = flask.__version__
-
-        results["cache"] = {
-            "type": ctx.cache.__class__.__name__,
-            "active": check_cache()
-        }
 
         return json_response({"app_info": results})
 
