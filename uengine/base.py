@@ -45,9 +45,13 @@ class Base:
         class_file = inspect.getfile(self.__class__)
         self.app_dir = os.path.dirname(os.path.abspath(class_file))
         self.base_dir = os.path.abspath(os.path.join(self.app_dir, "../"))
-        envtype = os.getenv("UENGINE_ENV")
-        if envtype is None:
-            envtype = os.getenv("MICROENG_ENV", DEFAULT_ENVIRONMENT_TYPE)
+
+        self.version = "development"
+        self.__set_version()
+
+        envtype = os.getenv("UENGINE_ENV",
+                            os.getenv("MICROENG_ENV",
+                                      DEFAULT_ENVIRONMENT_TYPE))
         if envtype not in ENVIRONMENT_TYPES:
             envtype = DEFAULT_ENVIRONMENT_TYPE
         ctx.envtype = envtype
@@ -62,8 +66,8 @@ class Base:
         ctx.db = DB()  # Requires ctx.cfg
         self.flask = self.__setup_flask()  # requires ctx.cfg and ctx.log
         self.__setup_error_handling()  # requires self.flask
-        self.__check_auth_config()  # requires ctx.cfg and ctx.log
         ctx.cache = self.__setup_cache()  # requires ctx.cfg and ctx.log
+        self.__setup_sessions()
         self.configure_routes()
         self.after_configured()
 
@@ -72,6 +76,13 @@ class Base:
 
     def after_configured(self):
         pass
+
+    def __set_version(self):
+        ver_filename = os.path.join(self.base_dir, "__version__")
+        if not os.path.isfile(ver_filename):
+            return
+        with open(ver_filename) as verf:
+            self.version = verf.read().strip()
 
     @staticmethod
     def __setup_cache():
@@ -115,7 +126,7 @@ class Base:
     def __setup_flask():
         ctx.log.info("Environment type is %s", ctx.envtype)
         ctx.log.debug("Setting up Flask")
-        flask = Flask(__name__)
+        flask = Flask(__name__, static_folder=None)
 
         ctx.log.debug("Applying Flask settings")
         if "flask_settings" in ctx.cfg:
@@ -173,7 +184,7 @@ class Base:
     def __setup_sessions(self):
         ctx.log.debug("Setting up sessions")
 
-        e_time = ctx.cfg.get("session_expiration_time", DEFAULT_SESSION_EXPIRATION_TIME)
+        e_time = ctx.cfg.get("session_ttl", DEFAULT_SESSION_EXPIRATION_TIME)
         self.flask.session_interface = MongoSessionInterface(collection_name='sessions')
         self.flask.permanent_session_lifetime = timedelta(seconds=e_time)
         self.session_expiration_time = timedelta(seconds=e_time)
@@ -184,15 +195,5 @@ class Base:
         self.flask.register_error_handler(ApiError, handle_api_error)
         self.flask.register_error_handler(Exception, handle_other_errors)
 
-    @staticmethod
-    def __check_auth_config():
-        try:
-            for config in ctx.cfg["oauth"].values():
-                _ = config["id"], config["secret"], config["redirect_uri"]
-        except KeyError:
-            ctx.cfg["oauth"] = {}
-            ctx.log.error("OAuth misconfiguration. OAuth settings will be empty.")
-
     def run(self, **kwargs):
-        self.__setup_sessions()
         self.flask.run(**kwargs)

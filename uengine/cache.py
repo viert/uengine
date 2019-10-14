@@ -2,7 +2,7 @@ import functools
 
 from datetime import datetime
 from hashlib import md5
-from flask import g
+from flask import g, has_app_context
 from random import randint
 from . import ctx
 from .db import ObjectsCursor
@@ -13,37 +13,31 @@ DEFAULT_CACHE_TIMEOUT = 3600
 
 
 def req_cache_get(key):
-    try:
-        if key not in g.request_local_cache:
-            return None
-        return g.request_local_cache[key]
-    except RuntimeError:
+    if not has_app_context():
         return None
+    return g.request_local_cache.get(key)
 
 
 def req_cache_set(key, value):
-    try:
-        g.request_local_cache[key] = value
-        return True
-    except RuntimeError:
+    if not has_app_context():
         return False
+    g.request_local_cache[key] = value
+    return True
 
 
 def req_cache_delete(key):
-    try:
-        if key in g.request_local_cache:
-            del g.request_local_cache[key]
-            return True
+    if not has_app_context():
         return False
-    except RuntimeError:
-        return False
+    if key in g.request_local_cache:
+        del g.request_local_cache[key]
+        return True
+    return False
 
 
 def req_cache_has_key(key):
-    try:
-        return key in g.request_local_cache
-    except RuntimeError:
+    if not has_app_context():
         return False
+    return key in g.request_local_cache
 
 
 def _get_cache_key(pref, funcname, args, kwargs):
@@ -71,48 +65,59 @@ def cached_function(cache_key_prefix=DEFAULT_CACHE_PREFIX, cache_timeout=DEFAULT
     def cache_decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            cache_key, _ = _get_cache_key(cache_key_prefix, func.__name__, args, kwargs)
+            cache_key, _ = _get_cache_key(
+                cache_key_prefix, func.__name__, args, kwargs)
             t1 = datetime.now()
 
             if ctx.cache.has(cache_key):
                 value = ctx.cache.get(cache_key)
-                ctx.log.debug("Cache HIT %s (%.3f seconds)", cache_key, (datetime.now() - t1).total_seconds())
+                ctx.log.debug("Cache HIT %s (%.3f seconds)",
+                              cache_key, (datetime.now() - t1).total_seconds())
             else:
                 value = func(*args, **kwargs)
                 if value or not positive_only:
                     ctx.cache.set(cache_key, value, timeout=cache_timeout)
-                ctx.log.debug("Cache MISS %s (%.3f seconds)", cache_key, (datetime.now() - t1).total_seconds())
+                ctx.log.debug("Cache MISS %s (%.3f seconds)",
+                              cache_key, (datetime.now() - t1).total_seconds())
             return value
         return wrapper
     return cache_decorator
 
 
-def cached_method(prefix, key_field, cache_timeout=None, positive_only=False):
+def cached_method(prefix, key_field=None, cache_timeout=None, positive_only=False):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             t1 = datetime.now()
 
             obj = args[0]
-            if not hasattr(obj, key_field):
-                ctx.log.error(f"MethodCache ERROR {obj.__class__.__name__} doesn't have attr {key_field}")
-                return func(*args, **kwargs)
-            try:
-                key = str(getattr(obj, key_field))
-            except TypeError as e:
-                ctx.log.error(f"MethodCache ERROR parsing {key_field}: {e}")
-                return func(*args, **kwargs)
 
-            cache_key = f"{prefix}.{key}"
+            if key_field is not None:
+                if not hasattr(obj, key_field):
+                    ctx.log.error(
+                        f"MethodCache ERROR {obj.__class__.__name__} doesn't have attr {key_field}")
+                    return func(*args, **kwargs)
+                try:
+                    key = str(getattr(obj, key_field))
+                except TypeError as e:
+                    ctx.log.error(
+                        f"MethodCache ERROR parsing {key_field}: {e}")
+                    return func(*args, **kwargs)
+
+                cache_key = f"{prefix}.{key}"
+            else:
+                cache_key = prefix
 
             if ctx.cache.has(cache_key):
                 value = ctx.cache.get(cache_key)
-                ctx.log.debug("MethodCache HIT %s (%.3f seconds)", cache_key, (datetime.now() - t1).total_seconds())
+                ctx.log.debug("MethodCache HIT %s (%.3f seconds)",
+                              cache_key, (datetime.now() - t1).total_seconds())
             else:
                 value = func(*args, **kwargs)
                 if value or not positive_only:
                     ctx.cache.set(cache_key, value, timeout=cache_timeout)
-                ctx.log.debug("MethodCache MISS %s (%.3f seconds)", cache_key, (datetime.now() - t1).total_seconds())
+                ctx.log.debug("MethodCache MISS %s (%.3f seconds)",
+                              cache_key, (datetime.now() - t1).total_seconds())
 
             return value
 
@@ -150,7 +155,8 @@ def once_per_request(cache_key_prefix=DEFAULT_CACHE_PREFIX + ".once"):
                 # cache only if request id is available (i.e. inside flask app context)
                 func(*args, **kwargs)
                 return
-            flag_key, _ = _get_cache_key(cache_key_prefix, func.__name__, args, kwargs)
+            flag_key, _ = _get_cache_key(
+                cache_key_prefix, func.__name__, args, kwargs)
             t1 = datetime.now()
 
             if not req_cache_has_key(flag_key):
@@ -179,24 +185,27 @@ def request_time_cache(cache_key_prefix=DEFAULT_CACHE_PREFIX):
     def cache_decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            try:
-                request_id = g.request_id
-            except (RuntimeError, AttributeError):
+            if not has_app_context():
                 return func(*args, **kwargs)
-            cache_key, _ = _get_cache_key(cache_key_prefix, func.__name__, args, kwargs)
+
+            request_id = g.request_id
+            cache_key, _ = _get_cache_key(
+                cache_key_prefix, func.__name__, args, kwargs)
             t1 = datetime.now()
 
             if not req_cache_has_key(cache_key):
                 value = func(*args, **kwargs)
                 req_cache_set(cache_key, value)
                 ts = (datetime.now() - t1).total_seconds()
-                ctx.log.debug("RTCache %s MISS %s(%s) (%.3f secs)", request_id, func.__name__, cache_key, ts)
+                ctx.log.debug("RTCache %s MISS %s(%s) (%.3f secs)",
+                              request_id, func.__name__, cache_key, ts)
             else:
                 value = req_cache_get(cache_key)
                 if isinstance(value, ObjectsCursor):
                     value.cursor.rewind()
                 ts = (datetime.now() - t1).total_seconds()
-                ctx.log.debug("RTCache %s HIT  %s(%s) (%.3f secs)", request_id, func.__name__, cache_key, ts)
+                ctx.log.debug("RTCache %s HIT  %s(%s) (%.3f secs)",
+                              request_id, func.__name__, cache_key, ts)
             return value
         return wrapper
     return cache_decorator

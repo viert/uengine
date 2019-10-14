@@ -2,7 +2,7 @@ from traceback import format_exc
 from werkzeug.exceptions import HTTPException
 
 from . import ctx
-from .utils import json_response
+from .api import json_response
 
 
 class ApiError(Exception):
@@ -34,38 +34,34 @@ class ApiError(Exception):
 class AuthenticationError(ApiError):
 
     status_code = 401
+    auth_url = None
 
-    def __init__(self, message="You must be authenticated first"):
+    def __init__(self, message="you must be authenticated first"):
         ApiError.__init__(self, message)
-        self.auth_urls = {}
-        for key, config in ctx.cfg.get("oauth", {}).items():
-            self.auth_urls[key] = {
-                "id": config["id"],
-                "redirect_uri": config["redirect_uri"]
-            }
+        if self.auth_url is None:
+            oauth_cfg = ctx.cfg.get("oauth")
+            if oauth_cfg:
+                client_id = oauth_cfg.get("id")
+                auth_url = oauth_cfg.get("authorize_url")
+                callback_url = oauth_cfg.get("callback_url")
+                if client_id and auth_url and callback_url:
+                    AuthenticationError.auth_url = f"{auth_url}?response_type=code&" \
+                        f"client_id={client_id}&scope=user_info&redirect_uri={callback_url}"
 
     def to_dict(self):
         return {
             "error": self.message,
             "state": "logged out",
-            "oauth": self.auth_urls
+            "oauth": self.auth_url
         }
+
+
+class ConfigurationError(SystemExit):
+    pass
 
 
 class Forbidden(ApiError):
     status_code = 403
-
-
-class InviteRequired(Forbidden):
-
-    def __init__(self, message="Invite is required"):
-        Forbidden.__init__(self, message)
-
-    def to_dict(self):
-        return {
-            "error": self.message,
-            "state": "not invited",
-        }
 
 
 class IntegrityError(ApiError):
@@ -84,79 +80,23 @@ class ShardIsReadOnly(IntegrityError):
     pass
 
 
-class FriendAlreadyExists(IntegrityError):
-    pass
-
-
-class FriendDoesntExist(IntegrityError):
-    pass
-
-
 class ModelDestroyed(IntegrityError):
     pass
 
 
-class InvalidStreamType(ApiError):
+class MissingSubmodel(IntegrityError):
     pass
 
 
-class InvalidStreamOwner(ApiError):
+class WrongSubmodel(IntegrityError):
     pass
 
 
-class InvalidStreamModerationType(ApiError):
-    pass
-
-
-class InvalidClubType(ApiError):
-    pass
-
-
-class AlreadySubscribed(IntegrityError):
-    pass
-
-
-class NotSubscribed(IntegrityError):
-    pass
-
-
-class InvalidPostType(ApiError):
-    pass
-
-
-class InvalidStreamId(ApiError):
-    pass
-
-
-class InvalidAuthorId(ApiError):
-    pass
-
-
-class InvalidUserId(ApiError):
-    pass
-
-
-class InvalidPostId(ApiError):
-    pass
-
-
-class InvalidParent(ApiError):
-    pass
-
-
-class InvalidLikeValue(ApiError):
-    pass
-
-
-class InvalidVisibilityType(ApiError):
+class UnknownSubmodel(IntegrityError):
     pass
 
 
 class InputDataError(ApiError):
-    pass
-
-
-class InvalidTags(ApiError):
     pass
 
 
@@ -172,6 +112,8 @@ def handle_other_errors(error):
     code = 400
     if hasattr(error, 'code'):
         code = error.code
+    if not (100 <= code < 600):
+        code = 400
     if not issubclass(error.__class__, HTTPException):
         ctx.log.error(format_exc())
     return json_response({"error": str(error)}, code)

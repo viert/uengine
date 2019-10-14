@@ -1,5 +1,5 @@
 from flask.json import JSONEncoder
-from bson.objectid import ObjectId
+from bson import ObjectId, Timestamp
 from .models.abstract_model import AbstractModel
 from .db import ObjectsCursor
 
@@ -9,6 +9,8 @@ class MongoJSONEncoder(JSONEncoder):
 
         if isinstance(o, ObjectId):
             return str(o)
+        if isinstance(o, Timestamp):
+            return o.time
         if isinstance(o, (ObjectsCursor, set)):
             return list(o)
         if isinstance(o, AbstractModel):

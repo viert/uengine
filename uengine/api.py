@@ -1,13 +1,25 @@
 import functools
 import re
 
+from collections import namedtuple
 from math import ceil
-from flask import request, g
+from flask import request
+from flask import json, make_response
 
 from . import ctx
-from .errors import InputDataError
+
+ArithmeticExpression = namedtuple('_ArithmeticExpression', field_names=["op", "value"])
 
 DEFAULT_DOCUMENTS_PER_PAGE = 10
+ARITHMETIC_OPS = (
+    "eq",
+    "lt",
+    "gt",
+    "lte",
+    "gte",
+    "ne",
+)
+INTEGER_EXPRESSION = re.compile("^\d+$")
 
 
 def get_page(nopaging=False):
@@ -98,18 +110,10 @@ def default_transform(fields=None):
     return transform
 
 
-def get_user_from_app_context():
-    user = None
-    try:
-        user = g.user
-    except AttributeError:
-        pass
-    # except RuntimeError:
-    #     raise OutsideApplicationContext("trying to get g object outside app context")
-    return user
-
-
 def filter_expr(flt):
+    if flt.find(" ") >= 0:
+        tokens = flt.split()
+        return {"$in": tokens}
     try:
         return re.compile(flt, re.IGNORECASE)
     # re.compile's can throw multiple different exceptions. We do not care what went wrong
@@ -117,21 +121,31 @@ def filter_expr(flt):
         return ""
 
 
+def arithmetic_expr(expr, try_int=True):
+    tokens = expr.split(":")
+    expr_op = "eq"
+    if len(tokens) == 2 and tokens[0] in ARITHMETIC_OPS:
+        expr_op = tokens[0]
+        expr = tokens[1]
+
+    if try_int and INTEGER_EXPRESSION.match(expr):
+        expr = int(expr)
+
+    return ArithmeticExpression(op=expr_op, value=expr)
+
+
 def json_body_required(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-
+        from .errors import InputDataError
         if request.json is None:
             raise InputDataError("json data is missing")
         return func(*args, **kwargs)
     return wrapper
 
 
-def parse_oauth_state(state_expr):
-    results = {}
-    states = state_expr.split("|")
-    for state in states:
-        tokens = state.split(":")
-        if len(tokens) == 2:
-            results[tokens[0]] = tokens[1]
-    return results
+def json_response(data, code=200):
+    json_kwargs = {}
+    if ctx.cfg.get("debug"):
+        json_kwargs["indent"] = 4
+    return make_response(json.dumps(data, **json_kwargs), code, {'Content-Type': 'application/json'})

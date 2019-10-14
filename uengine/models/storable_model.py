@@ -1,8 +1,10 @@
+from functools import partial
 from uengine import ctx
-from uengine.utils import resolve_id
-from uengine.errors import NotFound, ModelDestroyed
+from uengine.utils import resolve_id, current_user_is_system
+from uengine.errors import NotFound, ModelDestroyed, IntegrityError
 from uengine.cache import req_cache_get, req_cache_set, req_cache_has_key, req_cache_delete
 from datetime import datetime
+from bson.objectid import ObjectId
 
 from .abstract_model import AbstractModel
 
@@ -12,27 +14,34 @@ class StorableModel(AbstractModel):
     def __init__(self, **kwargs):
         AbstractModel.__init__(self, **kwargs)
 
+    @property
+    def _db(self):
+        if not self.collection:
+            raise IntegrityError(f"There is no DB for abstract model: {self.__class__.__name__}")
+        return ctx.db.meta
+
     def _save_to_db(self):
-        ctx.db.meta.save_obj(self)
+        self._db.save_obj(self)
 
     def update(self, data, skip_callback=False):
         for field in self.FIELDS:
             if field in data and field not in self.REJECTED_FIELDS and field != "_id":
+                # system fields are silently excluded if the current user is not a system user
+                if field in self.SYSTEM_FIELDS and not current_user_is_system():
+                    continue
                 self.__setattr__(field, data[field])
         self.save(skip_callback=skip_callback)
 
-    def destroy(self, skip_callback=False):
-        if self.is_new:
-            return
-        if not skip_callback:
-            self._before_delete()
-        ctx.db.meta.delete_obj(self)
-        if not skip_callback:
-            self._after_delete()
-        self._id = None
+    def _delete_from_db(self):
+        self._db.delete_obj(self)
+
+    def _refetch_from_db(self):
+        return self.find_one({"_id": self._id})
 
     def reload(self):
-        tmp = self.__class__.find_one({"_id": self._id})
+        if self.is_new:
+            return
+        tmp = self._refetch_from_db()
         if tmp is None:
             raise ModelDestroyed("model has been deleted from db")
         for field in self.FIELDS:
@@ -42,18 +51,24 @@ class StorableModel(AbstractModel):
             setattr(self, field, value)
 
     @classmethod
+    # E.g. override if you want model to always return a subset of documents in its collection
+    def _preprocess_query(cls, query):
+        return query
+
+    @classmethod
     def find(cls, query=None, **kwargs):
         if not query:
             query = {}
-        return ctx.db.meta.get_objs(cls, cls.collection, query, **kwargs)
+        return ctx.db.meta.get_objs(cls.from_data, cls.collection, cls._preprocess_query(query), **kwargs)
 
     @classmethod
     def find_one(cls, query, **kwargs):
-        return ctx.db.meta.get_obj(cls, cls.collection, query, **kwargs)
+        return ctx.db.meta.get_obj(cls.from_data, cls.collection, cls._preprocess_query(query), **kwargs)
 
     @classmethod
     def get(cls, expression, raise_if_none=None):
-        from bson.objectid import ObjectId
+        if expression is None:
+            return None
 
         expression = resolve_id(expression)
         if isinstance(expression, ObjectId):
@@ -70,38 +85,45 @@ class StorableModel(AbstractModel):
         return res
 
     @classmethod
-    def cache_get(cls, expression, raise_if_none=None):
-        cache_key = f"{cls.__name__}.{expression}"
+    def _cache_get(cls, cache_key, getter, constructor=None):
         d1 = datetime.now()
+        if not constructor:
+            constructor = cls.from_data
 
         if req_cache_has_key(cache_key):
             data = req_cache_get(cache_key)
             td = (datetime.now() - d1).total_seconds()
-            ctx.log.debug(f"ModelCache L1 HIT {cache_key} {td:.3f} seconds")
-            return cls(**data)
+            ctx.log.debug("ModelCache L1 HIT %s %.3f seconds", cache_key, td)
+            return constructor(**data)
 
         if ctx.cache.has(cache_key):
             data = ctx.cache.get(cache_key)
             req_cache_set(cache_key, data)
             td = (datetime.now() - d1).total_seconds()
-            ctx.log.debug(f"ModelCache L2 HIT {cache_key} {td:.3f} seconds")
-            return cls(**data)
+            ctx.log.debug("ModelCache L2 HIT %s %.3f seconds", cache_key, td)
+            return constructor(**data)
 
-        instance = cls.get(expression, raise_if_none)
-        if instance is not None:
-            data = instance.to_dict()
+        obj = getter()
+        if obj:
+
+            data = obj.to_dict()
             ctx.cache.set(cache_key, data)
             req_cache_set(cache_key, data)
-            td = (datetime.now() - d1).total_seconds()
-            ctx.log.debug(f"ModelCache MISS {cache_key} {td:.3f} seconds")
-        return instance
 
-    def invalidate(self):
-        cache_key_id = f"{self.__class__.__name__}.{self._id}"
-        cache_key_keyfield = None
-        if self.KEY_FIELD is not None and self.KEY_FIELD != "_id":
-            cache_key_keyfield = f"{self.__class__.__name__}.{getattr(self, self.KEY_FIELD)}"
+        td = (datetime.now() - d1).total_seconds()
+        ctx.log.debug("ModelCache MISS %s %.3f seconds", cache_key, td)
+        return obj
 
+    @classmethod
+    def cache_get(cls, expression, raise_if_none=None):
+        if expression is None:
+            return None
+        cache_key = f"{cls.collection}.{expression}"
+        getter = partial(cls.get, expression, raise_if_none)
+        return cls._cache_get(cache_key, getter)
+
+    @staticmethod
+    def _invalidate(cache_key_id, cache_key_keyfield):
         cr_layer1_id = req_cache_delete(cache_key_id)
         cr_layer2_id = ctx.cache.delete(cache_key_id)
         cr_layer1_keyfield = None
@@ -112,20 +134,27 @@ class StorableModel(AbstractModel):
 
         return cr_layer1_id, cr_layer1_keyfield, cr_layer2_id, cr_layer2_keyfield
 
+    def invalidate(self):
+        cache_key_id = f"{self.collection}.{self._id}"
+        cache_key_keyfield = None
+        if self.KEY_FIELD is not None and self.KEY_FIELD != "_id":
+            cache_key_keyfield = f"{self.collection}.{getattr(self, self.KEY_FIELD)}"
+        return self._invalidate(cache_key_id, cache_key_keyfield)
+
     @classmethod
     def destroy_all(cls):
-        ctx.db.meta.delete_query(cls.collection, {})
+        ctx.db.meta.delete_query(cls.collection, cls._preprocess_query({}))
 
     @classmethod
     def destroy_many(cls, query):
         # warning: being a faster method than traditional model manipulation,
         # this method doesn't provide any lifecycle callback for independent
         # objects
-        ctx.db.meta.delete_query(cls.collection, query)
+        ctx.db.meta.delete_query(cls.collection, cls._preprocess_query(query))
 
     @classmethod
     def update_many(cls, query, attrs):
         # warning: being a faster method than traditional model manipulation,
         # this method doesn't provide any lifecycle callback for independent
         # objects
-        ctx.db.meta.update_query(cls.collection, query, attrs)
+        ctx.db.meta.update_query(cls.collection, cls._preprocess_query(query), attrs)

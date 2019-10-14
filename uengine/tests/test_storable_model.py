@@ -1,7 +1,6 @@
 # pylint: disable=protected-access
 
 from uengine.models.storable_model import StorableModel
-from uengine.models.abstract_model import FieldRequired, InvalidFieldType
 from .mongo_mock import MongoMockTest
 
 CALLABLE_DEFAULT_VALUE = 4
@@ -40,9 +39,8 @@ class TestModel(StorableModel):
         'field1',
     )
 
-    # Incorrect: not a tuple!!!
     INDEXES = (
-        "field1"
+        "field1",
     )
 
 
@@ -55,20 +53,6 @@ class TestStorableModel(MongoMockTest):
     def tearDown(self):
         TestModel.destroy_all()
         super().tearDown()
-
-    def test_init(self):
-        model = TestModel(field1='value')
-        self.assertEqual(model.field1, 'value')
-        model._before_delete()
-        model._before_save()
-
-    def test_incomplete(self):
-        model = TestModel(field1='value')
-        self.assertRaises(FieldRequired, model.save)
-
-    def test_incorrect_index(self):
-        model = TestModel()
-        self.assertRaises(TypeError, model.ensure_indexes)
 
     def test_eq(self):
         model = TestModel(field2="mymodel")
@@ -108,7 +92,3 @@ class TestStorableModel(MongoMockTest):
         self.assertEqual(model1.field2, "mymodel_updated")
         self.assertEqual(model2.field2, "mymodel_updated")
         self.assertEqual(model3.field2, "mymodel_update_test")
-
-    def test_invalid_type(self):
-        model = TestModel(field1=15, field2="any_value")
-        self.assertRaises(InvalidFieldType, model.save)

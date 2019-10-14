@@ -2,12 +2,13 @@ import cProfile
 import io
 import line_profiler
 import pstats
+import functools
 
 from . import ctx
 from .api import get_boolean_request_param
 
 from flask import g
-
+from datetime import datetime
 
 def before_request():
     if get_boolean_request_param("profile"):
@@ -33,3 +34,14 @@ def after_request(response):
         ctx.log.debug(strio.getvalue())
 
     return response
+
+
+def error_log_timings(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        t1 = datetime.now()
+        result = func(*args, **kwargs)
+        t2 = datetime.now()
+        ctx.log.error("%s finished in %.3f seconds", func.__name__, (t2 - t1).total_seconds())
+        return result
+    return wrapper

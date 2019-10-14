@@ -256,6 +256,22 @@ class _DB:
 
 class DB:
 
+    INFO_FIELDS = (
+        "allocator",
+        "bits",
+        "debug",
+        "gitVersion",
+        "javascriptEngine",
+        "maxBsonObjectSize",
+        "modules",
+        "ok",
+        "openssl",
+        "storageEngines",
+        "sysInfo",
+        "version",
+        "versionArray"
+    )
+
     def __init__(self):
         self.meta = _DB(ctx.cfg["database"]["meta"])
         self.shards = {}
@@ -272,3 +288,13 @@ class DB:
         if shard_id not in self.shards:
             raise InvalidShardId(f"shard {shard_id} doesn't exist")
         return self.shards[shard_id]
+
+    def mongodb_info(self):
+
+        def sys_info(raw_info):
+            return {k: v for k, v in raw_info.items() if k in self.INFO_FIELDS}
+
+        return dict(
+            meta=sys_info(self.meta.conn.client.server_info()),
+            shards={shard_id: sys_info(self.shards[shard_id].conn.client.server_info()) for shard_id in self.shards}
+        )

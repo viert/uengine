@@ -38,7 +38,7 @@ def gen_ctx_prop(name, default=_NOT_SET):
         except AttributeError:
             setattr(self, attr_name, value)
             return
-        raise ContextError(f"Attempted to overwrite already initialised {name}")
+        # raise ContextError(f"Attempted to overwrite already initialised {name}")
 
     def deleter(self):
         delattr(self, attr_name)
