@@ -1,4 +1,4 @@
-from uengine.commands import Command
+from commands import Command
 from {{project_name}} import app
 from uengine import ctx
 from uengine.utils import get_modules

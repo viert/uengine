@@ -1,6 +1,6 @@
 import pylint.lint
 
-from uengine.commands import Command
+from commands import Command
 
 
 class Lint(Command):

@@ -1,5 +1,5 @@
 from uengine import ctx
-from uengine.commands import Command
+from commands import Command
 from datetime import datetime
 
 

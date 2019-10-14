@@ -2,13 +2,11 @@ from {{project_name}}.models import User, Token
 import logging
 import mongomock
 
-from uengine.commands import Command
+from commands import Command
 from unittest import main
 from uengine import ctx
 from {{project_name}} import force_init_app
 from {{project_name}} import tests
-{% if auth % }
-{% endif % }
 
 
 class Test(Command):
@@ -33,10 +31,10 @@ class Test(Command):
                 }
             }
         }
-        {% if auth % }
+        {% if auth %}
         User._collection = "test_users"  # pylint: disable=protected-access
         Token._collection = "test_tokens"  # pylint: disable=protected-access
-        {% endif % }
+        {% endif %}
 
         argv = ['micro.py test'] + self.raw_args
         test_program = main(argv=argv, module=tests, exit=False)
