@@ -5,14 +5,14 @@ from jinja2 import Environment, FileSystemLoader
 
 def create_project(args):
     project_name = args.name[0]
-    if os.path.isdir(project_name):
-        raise RuntimeError(f"{project_name} exists")
 
-    if self.args.inplace:
+    if args.inplace:
         root_dir = "."
     else:
         root_dir = project_name
-    os.mkdir(root_dir)
+        if os.path.isdir(project_name):
+            raise RuntimeError(f"{project_name} exists")
+        os.mkdir(root_dir)
 
     template_path = os.path.join(os.path.dirname(__file__), "project_source_templates")
     env = Environment(loader=FileSystemLoader(template_path))
@@ -32,7 +32,7 @@ def create_project(args):
             tmpl = env.get_template(os.path.join(folder, f))
             with open(dst_file, "w") as outf:
                 outf.write(tmpl.render(project_name=project_name, auth=True))
-    micro_binary = os.path.join(project_name, "micro.py")
+    micro_binary = os.path.join(root_dir, "micro.py")
     os.chmod(micro_binary, 0o755)
 
 def main():
