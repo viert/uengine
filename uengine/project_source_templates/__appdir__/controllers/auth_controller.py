@@ -1,6 +1,6 @@
 import os
 from flask import Blueprint, g, session, request
-from uengine.errors import AuthenticationErrors
+from uengine.errors import AuthenticationError
 from uengine.context import ctx
 from {{ project_name }}.models import Token, User
 
