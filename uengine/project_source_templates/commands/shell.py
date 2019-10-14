@@ -1,4 +1,4 @@
-from commands import Command
+from uengine.commands import Command
 
 
 class Shell(Command):
