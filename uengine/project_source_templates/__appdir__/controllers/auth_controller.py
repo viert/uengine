@@ -1,6 +1,6 @@
 import os
 from flask import Blueprint, g, session, request
-from uengine.errors import AuthenticationError, InviteRequired
+from uengine.errors import AuthenticationErrors
 from uengine.context import ctx
 from {{ project_name }}.models import Token, User
 
@@ -55,5 +55,3 @@ class AuthController(Blueprint):
         if self.require_auth:
             if g.user is None:
                 raise AuthenticationError()
-            if not g.user.is_invited():
-                raise InviteRequired()

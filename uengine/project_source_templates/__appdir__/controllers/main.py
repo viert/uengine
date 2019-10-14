@@ -2,7 +2,7 @@ import flask
 
 from uengine import ctx
 from uengine.cache import check_cache
-from uengine.utils import json_response
+from uengine.api import json_response
 from .auth_controller import AuthController
 
 

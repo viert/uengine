@@ -1,6 +1,6 @@
 from functools import partial
 from uengine import ctx
-from uengine.utils import resolve_id, current_user_is_system
+from uengine.utils import resolve_id
 from uengine.errors import NotFound, ModelDestroyed, IntegrityError
 from uengine.cache import req_cache_get, req_cache_set, req_cache_has_key, req_cache_delete
 from datetime import datetime
@@ -26,9 +26,6 @@ class StorableModel(AbstractModel):
     def update(self, data, skip_callback=False):
         for field in self.FIELDS:
             if field in data and field not in self.REJECTED_FIELDS and field != "_id":
-                # system fields are silently excluded if the current user is not a system user
-                if field in self.SYSTEM_FIELDS and not current_user_is_system():
-                    continue
                 self.__setattr__(field, data[field])
         self.save(skip_callback=skip_callback)
 

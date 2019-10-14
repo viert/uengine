@@ -121,7 +121,6 @@ class AbstractModel(metaclass=ModelMeta):
     REJECTED_FIELDS = []
     REQUIRED_FIELDS = set()
     RESTRICTED_FIELDS = []
-    SYSTEM_FIELDS = []
     AUTO_TRIM_FIELDS = []
     KEY_FIELD = None
     DEFAULTS = {}
