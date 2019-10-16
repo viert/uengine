@@ -10,7 +10,6 @@ from werkzeug.contrib.cache import MemcachedCache, SimpleCache
 from uuid import uuid4
 
 from . import ctx
-from . import profilers
 from .db import DB
 from .errors import handle_api_error, handle_other_errors, ApiError
 from .sessions import MongoSessionInterface
@@ -144,8 +143,13 @@ class Base:
         if ctx.cfg.get("debug"):
             ctx.log.info("Setting up request logging due to debug setting")
 
-            flask.before_request(profilers.before_request)
-            flask.after_request(profilers.after_request)
+            try:
+                from . import profilers
+                flask.before_request(profilers.before_request)
+                flask.after_request(profilers.after_request)
+            except ImportError:
+                ctx.log.error(
+                    "error importing profiler, profiling will be disabled")
 
             # pylint: disable=unused-variable
             @flask.before_request
@@ -154,7 +158,8 @@ class Base:
 
             @flask.before_request
             def log_all_requests():
-                msg = "REQ_%s %s data=%s" % (request.method, request.path, request.json)
+                msg = "REQ_%s %s data=%s" % (
+                    request.method, request.path, request.json)
                 ctx.log.debug(msg)
 
             @flask.after_request
@@ -166,13 +171,15 @@ class Base:
                         response.get_data(),
                     ])))
                 else:
-                    ctx.log.debug(" ".join(map(str, [response.status, str(response.headers).rstrip('\r\n')])))
+                    ctx.log.debug(
+                        " ".join(map(str, [response.status, str(response.headers).rstrip('\r\n')])))
                 return response
 
         return flask
 
     def __read_config(self):
-        config_filename = os.path.join(self.base_dir, "config", "%s.py" % ctx.envtype)
+        config_filename = os.path.join(
+            self.base_dir, "config", "%s.py" % ctx.envtype)
         with open(config_filename) as f:
             config = {}
             text = f.read()
@@ -185,11 +192,13 @@ class Base:
         ctx.log.debug("Setting up sessions")
 
         e_time = ctx.cfg.get("session_ttl", DEFAULT_SESSION_EXPIRATION_TIME)
-        self.flask.session_interface = MongoSessionInterface(collection_name='sessions')
+        self.flask.session_interface = MongoSessionInterface(
+            collection_name='sessions')
         self.flask.permanent_session_lifetime = timedelta(seconds=e_time)
         self.session_expiration_time = timedelta(seconds=e_time)
         self.session_auto_cleanup = ctx.cfg.get("session_auto_cleanup", True)
-        self.session_auto_cleanup_trigger = ctx.cfg.get("session_auto_cleanup_rand_trigger", 0.05)
+        self.session_auto_cleanup_trigger = ctx.cfg.get(
+            "session_auto_cleanup_rand_trigger", 0.05)
 
     def __setup_error_handling(self):
         self.flask.register_error_handler(ApiError, handle_api_error)
