@@ -1,7 +1,9 @@
 import os
 from werkzeug.contrib.cache import SimpleCache
 from uengine.context import ctx
-from {{ project_name }} import app
+from {{ project_name }} import app, force_init_app
+
+force_init_app()
 
 if isinstance(ctx.cache, SimpleCache):
     if not os.getenv("UENGINE_USE_SIMPLE_CACHE"):
