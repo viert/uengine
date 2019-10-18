@@ -99,7 +99,10 @@ def main():
         command.init_argument_parser(command_parser)
 
     args = parser.parse_args()
-    args.command.args = args
-    if 'raw_args' in args:
-        args.command.raw_args = args.raw_args
-    return args.command.run()
+    if not hasattr(args, "command"):
+        print(f"Usage: {sys.argv[0]} <command> [<options>]")
+    else:
+        args.command.args = args
+        if 'raw_args' in args:
+            args.command.raw_args = args.raw_args
+        return args.command.run()
