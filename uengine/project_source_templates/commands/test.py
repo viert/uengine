@@ -16,7 +16,7 @@ class Test(Command):
     @mongomock.patch()
     def run(self):
         force_init_app()
-        ctx.log.level = logging.ERROR
+        ctx.log.setLevel(logging.ERROR)
         argv = ['micro.py test', '--buffer'] + self.raw_args
         test_program = main(argv=argv, module=tests, exit=False)
         if test_program.result.wasSuccessful():
