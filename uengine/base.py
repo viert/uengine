@@ -14,6 +14,7 @@ from .db import DB
 from .errors import handle_api_error, handle_other_errors, ApiError
 from .sessions import MongoSessionInterface
 from .json_encoder import MongoJSONEncoder
+from .file_cache import FileCache
 
 ENVIRONMENT_TYPES = ("development", "testing", "production")
 DEFAULT_ENVIRONMENT_TYPE = "development"
@@ -21,6 +22,7 @@ DEFAULT_SESSION_EXPIRATION_TIME = 86400 * 7 * 2
 DEFAULT_TOKEN_TTL = 86400 * 7 * 2
 DEFAULT_LOG_FORMAT = "[%(asctime)s] %(levelname)s %(filename)s:%(lineno)d %(request_id)s %(message)s"
 DEFAULT_LOG_LEVEL = "debug"
+DEFAULT_FILECACHE_DIR = "/var/cache/uengine"
 
 
 class RequestIDFilter(logging.Filter):
@@ -66,6 +68,7 @@ class Base:
         self.flask = self.__setup_flask()  # requires ctx.cfg and ctx.log
         self.__setup_error_handling()  # requires self.flask
         ctx.cache = self.__setup_cache()  # requires ctx.cfg and ctx.log
+        ctx.filecache = self.__setup_filecache()  # requires ctx.cfg and ctx.log
         self.__setup_sessions()
         self.configure_routes()
         self.after_configured()
@@ -90,6 +93,12 @@ class Base:
             return MemcachedCache(ctx.cfg.get("memcache_backends"))
 
         return SimpleCache()
+
+    @staticmethod
+    def __setup_filecache():
+        ctx.log.debug("Setting up a filecache")
+        filecache_dir = ctx.cfg.get("filecache_dir", DEFAULT_FILECACHE_DIR)
+        return FileCache(filecache_dir)
 
     @staticmethod
     def __setup_logging():

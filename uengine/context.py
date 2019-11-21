@@ -59,6 +59,7 @@ class _Context:
     log = gen_ctx_prop("log", default=logging)
     db = gen_ctx_prop("db")
     cache = gen_ctx_prop("cache")
+    filecache = gen_ctx_prop("filecache")
     line_profiler = _LineProfilerFuncs()
 
 
