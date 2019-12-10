@@ -17,7 +17,8 @@ class StorableModel(AbstractModel):
     @property
     def _db(self):
         if not self.collection:
-            raise IntegrityError(f"There is no DB for abstract model: {self.__class__.__name__}")
+            raise IntegrityError(
+                f"There is no DB for abstract model: {self.__class__.__name__}")
         return ctx.db.meta
 
     def _save_to_db(self):
@@ -120,12 +121,14 @@ class StorableModel(AbstractModel):
         return cls._cache_get(cache_key, getter)
 
     @staticmethod
-    def _invalidate(cache_key_id, cache_key_keyfield):
+    def _invalidate(cache_key_id, cache_key_keyfield=None):
+        ctx.log.debug("ModelCache DELETE %s", cache_key_id)
         cr_layer1_id = req_cache_delete(cache_key_id)
         cr_layer2_id = ctx.cache.delete(cache_key_id)
         cr_layer1_keyfield = None
         cr_layer2_keyfield = None
         if cache_key_keyfield:
+            ctx.log.debug("ModelCache DELETE %s", cache_key_keyfield)
             cr_layer1_keyfield = req_cache_delete(cache_key_keyfield)
             cr_layer2_keyfield = ctx.cache.delete(cache_key_keyfield)
 
@@ -154,4 +157,5 @@ class StorableModel(AbstractModel):
         # warning: being a faster method than traditional model manipulation,
         # this method doesn't provide any lifecycle callback for independent
         # objects
-        ctx.db.meta.update_query(cls.collection, cls._preprocess_query(query), attrs)
+        ctx.db.meta.update_query(
+            cls.collection, cls._preprocess_query(query), attrs)
