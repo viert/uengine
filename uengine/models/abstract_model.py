@@ -257,11 +257,11 @@ class AbstractModel(metaclass=ModelMeta):
 
         # autotrim
         for field in self.AUTO_TRIM_FIELDS:
+            value = getattr(self, field)
             try:
-                value = getattr(self, field)
                 value = value.strip()
                 setattr(self, field, value)
-            except:
+            except AttributeError:
                 pass
 
         if not skip_callback:
