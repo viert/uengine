@@ -212,6 +212,9 @@ class AbstractModel(metaclass=ModelMeta):
     def _before_save(self):
         pass
 
+    def _before_validation(self):
+        pass
+
     def _before_delete(self):
         pass
 
@@ -228,6 +231,9 @@ class AbstractModel(metaclass=ModelMeta):
         pass
 
     def _validate(self):
+        for field in self.missing_fields:
+            raise FieldRequired(field)
+
         for field_name, f_type in self.VALIDATION_TYPES.items():
             if not isinstance(getattr(self, field_name), f_type):
                 raise InvalidFieldType(
@@ -248,11 +254,13 @@ class AbstractModel(metaclass=ModelMeta):
             except Exception as e:
                 ctx.log.error("error executing destroy hook %s on model %s(%s): %s",
                               hook.__class__.__name__, self.__class__.__name__, self._id, e)
+        return self
 
     def save(self, skip_callback=False):
         is_new = self.is_new
-        for field in self.missing_fields:
-            raise FieldRequired(field)
+
+        if not skip_callback:
+            self._before_validation()
         self._validate()
 
         # autotrim
@@ -267,15 +275,18 @@ class AbstractModel(metaclass=ModelMeta):
         if not skip_callback:
             self._before_save()
         self._save_to_db()
+
         for hook in self._hooks:
             try:
                 hook.on_model_save(self, is_new)
             except Exception as e:
                 ctx.log.error("error executing save hook %s on model %s(%s): %s",
                               hook.__class__.__name__, self.__class__.__name__, self._id, e)
+
         self.__set_initial_state()
         if not skip_callback:
             self._after_save(is_new)
+
         return self
 
     def __repr__(self):
