@@ -2,6 +2,7 @@ import os
 from flask import has_request_context, g
 from datetime import datetime
 from bson.objectid import ObjectId, InvalidId
+from urllib.parse import urlencode, unquote, urlparse, parse_qsl, ParseResult
 from uuid import uuid4
 
 
@@ -100,3 +101,35 @@ def check_lists_are_equal(list1, list2):
         if type(e) is list and check_lists_are_equal(e, list2[i]):
             continue
         return False
+
+
+def add_url_params(url, params):
+    """ Add GET params to provided URL being aware of existing.
+
+    :param url: string of target URL
+    :param params: dict containing requested params to be added
+    :return: string with updated URL
+
+    >> url = 'http://stackoverflow.com/test?answers=true'
+    >> new_params = {'answers': False, 'data': ['some','values']}
+    >> add_url_params(url, new_params)
+    'http://stackoverflow.com/test?data=some&data=values&answers=false'
+
+    Taken from https://stackoverflow.com/questions/2506379/add-params-to-given-url-in-python
+    Thanks to Sapphire64
+    """
+    url = unquote(url)
+    parsed_url = urlparse(url)
+    get_args = parsed_url.query
+    parsed_get_args = dict(parse_qsl(get_args))
+    parsed_get_args.update(params)
+    parsed_get_args.update(
+        {k: json.dumps(v) for k, v in parsed_get_args.items()
+         if isinstance(v, (bool, dict))}
+    )
+    encoded_get_args = urlencode(parsed_get_args, doseq=True)
+    new_url = ParseResult(
+        parsed_url.scheme, parsed_url.netloc, parsed_url.path,
+        parsed_url.params, encoded_get_args, parsed_url.fragment
+    ).geturl()
+    return new_url

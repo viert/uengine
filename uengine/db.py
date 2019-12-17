@@ -25,7 +25,8 @@ def intercept_mongo_errors_rw(func):
         try:
             result = func(*args, **kwargs)
         except ServerSelectionTimeoutError:
-            ctx.log.error("ServerSelectionTimeout in db module for read/write operations")
+            ctx.log.error(
+                "ServerSelectionTimeout in db module for read/write operations")
             retries_left -= 1
             if retries_left == MONGO_RETRIES / 2:
                 ctx.log.error(
@@ -36,7 +37,8 @@ def intercept_mongo_errors_rw(func):
                 db_obj = args[0]
                 db_obj.reset_conn()
             if retries_left == 0:
-                ctx.log.error("Mongo connection %d retries more passed with no result, giving up", MONGO_RETRIES / 2)
+                ctx.log.error(
+                    "Mongo connection %d retries more passed with no result, giving up", MONGO_RETRIES / 2)
                 raise
 
             sleep(RETRY_SLEEP)
@@ -59,7 +61,8 @@ def intercept_mongo_errors_ro(func):
         try:
             result = func(*args, **kwargs)
         except pymongo.errors.ServerSelectionTimeoutError:
-            ctx.log.error("ServerSelectionTimeout in db module for read-only operations")
+            ctx.log.error(
+                "ServerSelectionTimeout in db module for read-only operations")
             retries_left -= 1
             if retries_left == MONGO_RETRIES_RO / 2:
                 ctx.log.error(
@@ -142,7 +145,8 @@ class _DB:
         client_kwargs = self._config.get("pymongo_extra", {})
         database = self._config.get('dbname')
         if "uri_ro" in self._config:
-            ro_client = pymongo.MongoClient(self._config["uri_ro"], **client_kwargs)
+            ro_client = pymongo.MongoClient(
+                self._config["uri_ro"], **client_kwargs)
             # AUTHENTICATION
             if 'username' in self._config and 'password' in self._config:
                 username = self._config["username"]
@@ -150,7 +154,8 @@ class _DB:
                 ro_client[database].authenticate(username, password)
             self._ro_conn = ro_client[database]
         else:
-            ctx.log.info("No uri_ro option found in configuration, falling back to read/write default connection")
+            ctx.log.info(
+                "No uri_ro option found in configuration, falling back to read/write default connection")
             self._ro_conn = self.conn
 
     def init_conn(self):
@@ -203,6 +208,12 @@ class _DB:
         cursor = self.ro_conn[collection].find(query, **kwargs)
         return ObjectsCursor(cursor, cls, shard_id=self._shard_id)
 
+    @intercept_mongo_errors_ro
+    def get_objs_projected(self, collection, query, projection, **kwargs):
+        cursor = self.ro_conn[collection].find(
+            query, projection=projection, **kwargs)
+        return cursor
+
     def get_objs_by_field_in(self, cls, collection, field, values, **kwargs):
         return self.get_objs(
             cls,
@@ -218,12 +229,16 @@ class _DB:
     @intercept_mongo_errors_rw
     def save_obj(self, obj):
         if obj.is_new:
-            data = obj.to_dict(include_restricted=True)    # object to_dict() method should always return all fields
-            del data["_id"]  # although with the new object we shouldn't pass _id=null to mongo
-            inserted_id = self.conn[obj.collection].insert_one(data).inserted_id
+            # object to_dict() method should always return all fields
+            data = obj.to_dict(include_restricted=True)
+            # although with the new object we shouldn't pass _id=null to mongo
+            del data["_id"]
+            inserted_id = self.conn[obj.collection].insert_one(
+                data).inserted_id
             obj._id = inserted_id
         else:
-            self.conn[obj.collection].replace_one({'_id': obj._id}, obj.to_dict(include_restricted=True), upsert=True)
+            self.conn[obj.collection].replace_one(
+                {'_id': obj._id}, obj.to_dict(include_restricted=True), upsert=True)
 
     @intercept_mongo_errors_rw
     def delete_obj(self, obj):
@@ -247,7 +262,8 @@ class _DB:
 
     @intercept_mongo_errors_rw
     def update_session(self, sid, data, expiration, collection='sessions'):
-        self.conn[collection].update({'sid': sid}, {'sid': sid, 'data': data, 'expiration': expiration}, True)
+        self.conn[collection].update(
+            {'sid': sid}, {'sid': sid, 'data': data, 'expiration': expiration}, True)
 
     @intercept_mongo_errors_rw
     def cleanup_sessions(self, collection='sessions'):
@@ -296,5 +312,6 @@ class DB:
 
         return dict(
             meta=sys_info(self.meta.conn.client.server_info()),
-            shards={shard_id: sys_info(self.shards[shard_id].conn.client.server_info()) for shard_id in self.shards}
+            shards={shard_id: sys_info(
+                self.shards[shard_id].conn.client.server_info()) for shard_id in self.shards}
         )

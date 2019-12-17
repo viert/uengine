@@ -54,6 +54,17 @@ class ShardedModel(StorableModel):
         )
 
     @classmethod
+    def find_projected(cls, shard_id, query=None, projection=('_id',), **kwargs):
+        if not query:
+            query = {}
+        return ctx.db.get_shard(shard_id).get_objs_projected(
+            cls.collection,
+            cls._preprocess_query(query),
+            projection=projection,
+            **kwargs
+        )
+
+    @classmethod
     def find_one(cls, shard_id, query, **kwargs):
         return ctx.db.get_shard(shard_id).get_obj(
             cls.from_data,

@@ -60,6 +60,13 @@ class StorableModel(AbstractModel):
         return ctx.db.meta.get_objs(cls.from_data, cls.collection, cls._preprocess_query(query), **kwargs)
 
     @classmethod
+    def find_projected(cls, query=None, projection=('_id',), **kwargs):
+        if not query:
+            query = {}
+        return ctx.db.meta.get_objs_projected(cls.collection, cls._preprocess_query(query),
+                                              projection=projection, **kwargs)
+
+    @classmethod
     def find_one(cls, query, **kwargs):
         return ctx.db.meta.get_obj(cls.from_data, cls.collection, cls._preprocess_query(query), **kwargs)
 
