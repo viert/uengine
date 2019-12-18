@@ -6,7 +6,7 @@ from uengine.cache import req_cache_get, req_cache_set, req_cache_has_key, req_c
 from datetime import datetime
 from bson.objectid import ObjectId
 
-from .abstract_model import AbstractModel
+from .abstract_model import AbstractModel, save_required
 
 
 class StorableModel(AbstractModel):
