@@ -239,6 +239,13 @@ class AbstractModel(metaclass=ModelMeta):
                 raise InvalidFieldType(
                     f"field {field_name} must be of type {f_type.__name__}")
 
+    def _reload_from_obj(self, obj):
+        for field in self.FIELDS:
+            if field == "_id":
+                continue
+            value = getattr(obj, field)
+            setattr(self, field, value)
+
     def destroy(self, skip_callback=False):
         if self.is_new:
             return

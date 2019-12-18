@@ -30,6 +30,22 @@ class StorableModel(AbstractModel):
                 self.__setattr__(field, data[field])
         self.save(skip_callback=skip_callback)
 
+    @save_required
+    def db_update(self, update, when=None, reload=True):
+        """
+        :param update: MongoDB update query
+        :param when: filter query. No update will happen if it does not match
+        :param reload: Load the new stat into the object (Caution: if you do not do this
+                       the next save() will overwrite updated fields)
+        :return: True if the document was updated. Otherwise - False
+        """
+        new_data = self._db.find_and_update_obj(self, update, when)
+        if reload and new_data:
+            tmp = self.from_data(**new_data)
+            self._reload_from_obj(tmp)
+
+        return bool(new_data)
+
     def _delete_from_db(self):
         self._db.delete_obj(self)
 

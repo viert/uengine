@@ -89,9 +89,7 @@ def cached_method(prefix, key_field=None, cache_timeout=None, positive_only=Fals
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             t1 = datetime.now()
-
             obj = args[0]
-
             if key_field is not None:
                 if not hasattr(obj, key_field):
                     ctx.log.error(

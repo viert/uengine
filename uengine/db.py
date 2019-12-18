@@ -247,6 +247,22 @@ class _DB:
         self.conn[obj.collection].delete_one({'_id': obj._id})
 
     @intercept_mongo_errors_rw
+    def find_and_update_obj(self, obj, update, when=None):
+        query = {"_id": obj._id}
+        if when:
+            assert "_id" not in when
+            query.update(when)
+
+        new_data = self.conn[obj.collection].find_one_and_update(
+            query,
+            update,
+            return_document=pymongo.ReturnDocument.AFTER
+        )
+        if new_data and self._shard_id:
+            new_data["shard_id"] = self._shard_id
+        return new_data
+
+    @intercept_mongo_errors_rw
     def delete_query(self, collection, query):
         return self.conn[collection].delete_many(query)
 
