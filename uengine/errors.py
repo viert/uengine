@@ -8,6 +8,7 @@ from .api import json_response
 class ApiError(Exception):
 
     status_code = 400
+    error_key = "api_error"
 
     def __init__(self, message, status_code=None, payload=None):
         Exception.__init__(self)
@@ -18,6 +19,7 @@ class ApiError(Exception):
 
     def to_dict(self):
         data = self.payload
+        data["error_key"] = self.error_key
         data["error"] = self.message
         return data
 
@@ -31,6 +33,7 @@ class ApiError(Exception):
 class AuthenticationError(ApiError):
 
     status_code = 401
+    error_key = "auth_error"
     auth_url = None
 
     def __init__(self, message="you must be authenticated first", payload=None):
@@ -58,18 +61,22 @@ class ConfigurationError(SystemExit):
 
 
 class Forbidden(ApiError):
+    error_key = "forbidden"
     status_code = 403
 
 
 class IntegrityError(ApiError):
+    error_key = "integrity_error"
     status_code = 409
 
 
 class NotFound(ApiError):
+    error_key = "not_found"
     status_code = 404
 
 
 class InvalidShardId(ApiError):
+    error_key = "intrnl_error"
     status_code = 500
 
 
@@ -94,10 +101,12 @@ class UnknownSubmodel(IntegrityError):
 
 
 class InputDataError(ApiError):
+    error_key = "bad_input"
     pass
 
 
 class InvalidFieldType(ApiError):
+    error_key = "bad_input_type"
     pass
 
 
