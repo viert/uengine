@@ -24,14 +24,14 @@ class StorableModel(AbstractModel):
     def _save_to_db(self):
         self._db.save_obj(self)
 
-    def update(self, data, skip_callback=False):
+    def update(self, data, skip_callback=False, invalidate_cache=True):
         for field in self.FIELDS:
             if field in data and field not in self.REJECTED_FIELDS and field != "_id":
                 self.__setattr__(field, data[field])
-        self.save(skip_callback=skip_callback)
+        self.save(skip_callback=skip_callback, invalidate_cache=True)
 
     @save_required
-    def db_update(self, update, when=None, reload=True):
+    def db_update(self, update, when=None, reload=True, invalidate_cache=True):
         """
         :param update: MongoDB update query
         :param when: filter query. No update will happen if it does not match
@@ -40,6 +40,9 @@ class StorableModel(AbstractModel):
         :return: True if the document was updated. Otherwise - False
         """
         new_data = self._db.find_and_update_obj(self, update, when)
+        if invalidate_cache and new_data:
+            self.invalidate()
+
         if reload and new_data:
             tmp = self.from_data(**new_data)
             self._reload_from_obj(tmp)

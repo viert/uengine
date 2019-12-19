@@ -230,6 +230,9 @@ class AbstractModel(metaclass=ModelMeta):
     def _delete_from_db(self):
         pass
 
+    def invalidate(self):
+        pass
+
     def _validate(self):
         for field in self.missing_fields:
             raise FieldRequired(field)
@@ -246,7 +249,7 @@ class AbstractModel(metaclass=ModelMeta):
             value = getattr(obj, field)
             setattr(self, field, value)
 
-    def destroy(self, skip_callback=False):
+    def destroy(self, skip_callback=False, invalidate_cache=True):
         if self.is_new:
             return
         if not skip_callback:
@@ -261,9 +264,11 @@ class AbstractModel(metaclass=ModelMeta):
             except Exception as e:
                 ctx.log.error("error executing destroy hook %s on model %s(%s): %s",
                               hook.__class__.__name__, self.__class__.__name__, self._id, e)
+        if invalidate_cache:
+            self.invalidate()
         return self
 
-    def save(self, skip_callback=False):
+    def save(self, skip_callback=False, invalidate_cache=True):
         is_new = self.is_new
 
         if not skip_callback:
@@ -291,6 +296,8 @@ class AbstractModel(metaclass=ModelMeta):
                               hook.__class__.__name__, self.__class__.__name__, self._id, e)
 
         self.__set_initial_state()
+        if invalidate_cache:
+            self.invalidate()
         if not skip_callback:
             self._after_save(is_new)
 
