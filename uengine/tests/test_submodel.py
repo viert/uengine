@@ -172,7 +172,8 @@ class _BaseTestSubmodel(MongoMockTest):
         with self.assertRaises(IntegrityError):
             class NewSubmodel(self.base_model):
                 SUBMODEL = self.submodel2.SUBMODEL
-            self.base_model.register_submodel(NewSubmodel.SUBMODEL, NewSubmodel)
+            self.base_model.register_submodel(
+                NewSubmodel.SUBMODEL, NewSubmodel)
 
 
 class TestShardedSubmodel(_BaseTestSubmodel):

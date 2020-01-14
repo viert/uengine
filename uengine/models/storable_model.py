@@ -28,7 +28,7 @@ class StorableModel(AbstractModel):
         for field in self.FIELDS:
             if field in data and field not in self.REJECTED_FIELDS and field != "_id":
                 self.__setattr__(field, data[field])
-        self.save(skip_callback=skip_callback, invalidate_cache=True)
+        self.save(skip_callback=skip_callback, invalidate_cache=invalidate_cache)
 
     @save_required
     def db_update(self, update, when=None, reload=True, invalidate_cache=True):

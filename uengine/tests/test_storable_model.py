@@ -61,7 +61,8 @@ class TestStorableModel(MongoMockTest):
         self.assertEqual(model, model2)
 
     def test_reject_on_update(self):
-        model = TestModel(field1="original_value", field2="mymodel_reject_test")
+        model = TestModel(field1="original_value",
+                          field2="mymodel_reject_test")
         model.save()
         id_ = model._id
         model.update({"field1": "new_value"})
@@ -69,7 +70,8 @@ class TestStorableModel(MongoMockTest):
         self.assertEqual(model.field1, "original_value")
 
     def test_update(self):
-        model = TestModel(field1="original_value", field2="mymodel_update_test")
+        model = TestModel(field1="original_value",
+                          field2="mymodel_update_test")
         model.save()
         id_ = model._id
         model.update({"field2": "mymodel_updated"})
@@ -77,14 +79,18 @@ class TestStorableModel(MongoMockTest):
         self.assertEqual(model.field2, "mymodel_updated")
 
     def test_update_many(self):
-        model1 = TestModel(field1="original_value", field2="mymodel_update_test")
+        model1 = TestModel(field1="original_value",
+                           field2="mymodel_update_test")
         model1.save()
-        model2 = TestModel(field1="original_value", field2="mymodel_update_test")
+        model2 = TestModel(field1="original_value",
+                           field2="mymodel_update_test")
         model2.save()
-        model3 = TestModel(field1="do_not_modify", field2="mymodel_update_test")
+        model3 = TestModel(field1="do_not_modify",
+                           field2="mymodel_update_test")
         model3.save()
 
-        TestModel.update_many({"field1": "original_value"}, {"$set": {"field2": "mymodel_updated"}})
+        TestModel.update_many({"field1": "original_value"}, {
+                              "$set": {"field2": "mymodel_updated"}})
         model1.reload()
         model2.reload()
         model3.reload()

@@ -17,14 +17,13 @@ def get_modules(directory):
 def resolve_id(id_):
     # ObjectId(None) apparently generates a new unique object id
     # which is not a behaviour we need
-    if id_ is None:
-        return None
-    try:
-        objid_expr = ObjectId(id_)
-        if str(objid_expr) == id_:
-            id_ = objid_expr
-    except InvalidId:
-        pass
+    if id_ is not None:
+        try:
+            objid_expr = ObjectId(id_)
+            if str(objid_expr) == id_:
+                id_ = objid_expr
+        except (InvalidId, TypeError):
+            pass
     return id_
 
 
