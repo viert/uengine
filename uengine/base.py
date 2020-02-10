@@ -6,7 +6,7 @@ import logging
 from flask import Flask, g, request
 from datetime import timedelta
 from logging.handlers import WatchedFileHandler
-from werkzeug.contrib.cache import MemcachedCache, SimpleCache
+from cachelib import MemcachedCache, SimpleCache
 from uuid import uuid4
 
 from . import ctx

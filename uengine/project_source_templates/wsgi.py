@@ -1,5 +1,5 @@
 import os
-from werkzeug.contrib.cache import SimpleCache
+from cachelib import SimpleCache
 from uengine.context import ctx
 from {{ project_name }} import app, force_init_app
 
