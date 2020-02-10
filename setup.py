@@ -18,6 +18,7 @@ setup(
         "jinja2",
         "flask",
         "pymongo",
+        "cachelib",
         "lazy_object_proxy",
         "ipython",
         "pylint",
