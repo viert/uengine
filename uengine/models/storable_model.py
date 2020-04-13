@@ -28,7 +28,8 @@ class StorableModel(AbstractModel):
         for field in self.FIELDS:
             if field in data and field not in self.REJECTED_FIELDS and field != "_id":
                 self.__setattr__(field, data[field])
-        self.save(skip_callback=skip_callback, invalidate_cache=invalidate_cache)
+        self.save(skip_callback=skip_callback,
+                  invalidate_cache=invalidate_cache)
 
     @save_required
     def db_update(self, update, when=None, reload=True, invalidate_cache=True):
@@ -77,6 +78,13 @@ class StorableModel(AbstractModel):
         if not query:
             query = {}
         return ctx.db.meta.get_objs(cls.from_data, cls.collection, cls._preprocess_query(query), **kwargs)
+
+    @classmethod
+    def aggregate(cls, pipeline, query=None, **kwargs):
+        if not query:
+            query = {}
+        pipeline = [{"$match": cls._preprocess_query(query)}] + pipeline
+        return ctx.db.meta.get_aggregated(cls.collection, pipeline, **kwargs)
 
     @classmethod
     def find_projected(cls, query=None, projection=('_id',), **kwargs):

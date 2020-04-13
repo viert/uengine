@@ -214,6 +214,11 @@ class _DB:
             query, projection=projection, **kwargs)
         return cursor
 
+    @intercept_mongo_errors_ro
+    def get_aggregated(self, collection, pipeline, **kwargs):
+        cursor = self.ro_conn[collection].aggregate(pipeline, **kwargs)
+        return cursor
+
     def get_objs_by_field_in(self, cls, collection, field, values, **kwargs):
         return self.get_objs(
             cls,

@@ -54,6 +54,13 @@ class ShardedModel(StorableModel):
         )
 
     @classmethod
+    def aggregate(cls, shard_id, pipeline, query=None, **kwargs):
+        if not query:
+            query = {}
+        pipeline = [{"$match": cls._preprocess_query(query)}] + pipeline
+        return ctx.db.get_shard(shard_id).get_aggregated(cls.collection, pipeline, **kwargs)
+
+    @classmethod
     def find_projected(cls, shard_id, query=None, projection=('_id',), **kwargs):
         if not query:
             query = {}
