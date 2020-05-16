@@ -1,5 +1,6 @@
 import pymongo
 
+from contextlib import contextmanager
 from bson.objectid import ObjectId, InvalidId
 from time import sleep
 from datetime import datetime
@@ -128,25 +129,51 @@ def pick_rw_shard_id():
 
 
 class _DB:
+
+    @contextmanager
+    def action(self):
+        client = self.get_rw_client()
+        try:
+            self._session = client.start_session()
+            yield
+        finally:
+            self._session = None
+
     def __init__(self, dbconf, shard_id=None):
         self._config = dbconf
+        self._rw_client = None
+        self._ro_client = None
         self._conn = None
         self._ro_conn = None
         self._shard_id = shard_id
+        self._session = None
 
     def reset_conn(self):
+        self._rw_client = None
         self._conn = None
 
     def reset_ro_conn(self):
+        self._ro_client = None
         self._ro_conn = None
+
+    def get_rw_client(self):
+        if not self._rw_client:
+            client_kwargs = self._config.get("pymongo_extra", {})
+            self._rw_client = pymongo.MongoClient(self._config["uri"], **client_kwargs)
+        return self._rw_client
+
+    def get_ro_client(self):
+        if not self._ro_client:
+            client_kwargs = self._config.get("pymongo_extra", {})
+            if "uri_ro" in self._config:
+                self._ro_client = pymongo.MongoClient(self._config["uri_ro"], **client_kwargs)
+        return self._ro_client
 
     def init_ro_conn(self):
         ctx.log.info("Creating a read-only mongo connection")
-        client_kwargs = self._config.get("pymongo_extra", {})
         database = self._config.get('dbname')
-        if "uri_ro" in self._config:
-            ro_client = pymongo.MongoClient(
-                self._config["uri_ro"], **client_kwargs)
+        ro_client = self.get_ro_client()
+        if ro_client:
             # AUTHENTICATION
             if 'username' in self._config and 'password' in self._config:
                 username = self._config["username"]
@@ -160,10 +187,8 @@ class _DB:
 
     def init_conn(self):
         ctx.log.info("Creating a read/write mongo connection")
-        client_kwargs = self._config.get("pymongo_extra", {})
-        client = pymongo.MongoClient(self._config["uri"], **client_kwargs)
+        client = self.get_rw_client()
         database = self._config['dbname']
-
         # AUTHENTICATION
         if 'username' in self._config and 'password' in self._config:
             username = self._config["username"]
@@ -191,7 +216,7 @@ class _DB:
                 query = {'_id': ObjectId(query)}
             except InvalidId:
                 pass
-        data = self.ro_conn[collection].find_one(query)
+        data = self.ro_conn[collection].find_one(query, session=self._session)
         if data:
             if self._shard_id:
                 data["shard_id"] = self._shard_id
@@ -201,21 +226,27 @@ class _DB:
 
     @intercept_mongo_errors_ro
     def get_obj_id(self, collection, query):
-        return self.ro_conn[collection].find_one(query, projection=())['_id']
+        return self.ro_conn[collection].find_one(query, projection=(), session=self._session)['_id']
 
     @intercept_mongo_errors_ro
     def get_objs(self, cls, collection, query, **kwargs):
+        if self._session:
+            kwargs["session"] = self._session
         cursor = self.ro_conn[collection].find(query, **kwargs)
         return ObjectsCursor(cursor, cls, shard_id=self._shard_id)
 
     @intercept_mongo_errors_ro
     def get_objs_projected(self, collection, query, projection, **kwargs):
+        if self._session:
+            kwargs["session"] = self._session
         cursor = self.ro_conn[collection].find(
             query, projection=projection, **kwargs)
         return cursor
 
     @intercept_mongo_errors_ro
     def get_aggregated(self, collection, pipeline, **kwargs):
+        if self._session:
+            kwargs["session"] = self._session
         cursor = self.ro_conn[collection].aggregate(pipeline, **kwargs)
         return cursor
 
@@ -239,17 +270,17 @@ class _DB:
             # although with the new object we shouldn't pass _id=null to mongo
             del data["_id"]
             inserted_id = self.conn[obj.collection].insert_one(
-                data).inserted_id
+                data, session=self._session).inserted_id
             obj._id = inserted_id
         else:
             self.conn[obj.collection].replace_one(
-                {'_id': obj._id}, obj.to_dict(include_restricted=True), upsert=True)
+                {'_id': obj._id}, obj.to_dict(include_restricted=True), upsert=True, session=self._session)
 
     @intercept_mongo_errors_rw
     def delete_obj(self, obj):
         if obj.is_new:
             return
-        self.conn[obj.collection].delete_one({'_id': obj._id})
+        self.conn[obj.collection].delete_one({'_id': obj._id}, session=self._session)
 
     @intercept_mongo_errors_rw
     def find_and_update_obj(self, obj, update, when=None):
@@ -261,7 +292,8 @@ class _DB:
         new_data = self.conn[obj.collection].find_one_and_update(
             query,
             update,
-            return_document=pymongo.ReturnDocument.AFTER
+            return_document=pymongo.ReturnDocument.AFTER,
+            session=self._session
         )
         if new_data and self._shard_id:
             new_data["shard_id"] = self._shard_id
@@ -269,11 +301,11 @@ class _DB:
 
     @intercept_mongo_errors_rw
     def delete_query(self, collection, query):
-        return self.conn[collection].delete_many(query)
+        return self.conn[collection].delete_many(query, session=self._session)
 
     @intercept_mongo_errors_rw
     def update_query(self, collection, query, update):
-        return self.conn[collection].update_many(query, update)
+        return self.conn[collection].update_many(query, update, session=self._session)
 
     # SESSIONS
 
