@@ -15,6 +15,10 @@ MONGO_RETRIES_RO = 6
 RETRY_SLEEP = 3  # 3 seconds
 
 
+class AbortTransaction(Exception):
+    pass
+
+
 def intercept_mongo_errors_rw(func):
     def wrapper(*args, **kwargs):
         if "retries_left" in kwargs:
@@ -138,8 +142,10 @@ class _DB:
             self._session.start_transaction()
             yield self._session
             self._session.commit_transaction()
-        except:
+        except Exception as e:
             self._session.abort_transaction()
+            if not isinstance(e, AbortTransaction):
+                raise
         finally:
             self._session.end_session()
             self._session = None
