@@ -131,12 +131,17 @@ def pick_rw_shard_id():
 class _DB:
 
     @contextmanager
-    def action(self):
+    def transaction(self):
         client = self.get_rw_client()
         try:
             self._session = client.start_session()
-            yield
+            self._session.start_transaction()
+            yield self._session
+            self._session.commit_transaction()
+        except:
+            self._session.abort_transaction()
         finally:
+            self._session.end_session()
             self._session = None
 
     def __init__(self, dbconf, shard_id=None):
