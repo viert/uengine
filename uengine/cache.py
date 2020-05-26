@@ -137,9 +137,6 @@ def check_cache():
 def once_per_request(cache_key_prefix=DEFAULT_CACHE_PREFIX + ".once"):
     """
     Decorator used for ensuring a subroutine runs exactly one time per api request.
-    Useful for update methods like system.update_ext() used to actualize external data
-    before generating kickstart and pxeconfig. It's always enough to run the update method
-    only once before doing multiple actions with actual data.
 
     This one acts exactly like request_time_cache without returning value and checking if
     it's positive and things like that.
@@ -147,10 +144,7 @@ def once_per_request(cache_key_prefix=DEFAULT_CACHE_PREFIX + ".once"):
     def cache_decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            try:
-                request_id = g.request_id
-            except (RuntimeError, AttributeError):
-                # cache only if request id is available (i.e. inside flask app context)
+            if not has_app_context():
                 func(*args, **kwargs)
                 return
             flag_key, _ = _get_cache_key(
@@ -161,11 +155,11 @@ def once_per_request(cache_key_prefix=DEFAULT_CACHE_PREFIX + ".once"):
                 func(*args, **kwargs)
                 req_cache_set(flag_key, True)
                 ts = (datetime.now() - t1).total_seconds()
-                ctx.log.debug("OncePerRequest %s MISS %s(%s) (%.3f secs)", request_id, func.__name__,
+                ctx.log.debug("OncePerRequest MISS %s(%s) (%.3f secs)", func.__name__,
                               flag_key, ts)
             else:
                 ts = (datetime.now() - t1).total_seconds()
-                ctx.log.debug("OncePerRequest %s HIT  %s(%s) (%.3f secs)", request_id, func.__name__,
+                ctx.log.debug("OncePerRequest HIT  %s(%s) (%.3f secs)", func.__name__,
                               flag_key, ts)
         return wrapper
     return cache_decorator
@@ -186,7 +180,6 @@ def request_time_cache(cache_key_prefix=DEFAULT_CACHE_PREFIX):
             if not has_app_context():
                 return func(*args, **kwargs)
 
-            request_id = g.request_id
             cache_key, _ = _get_cache_key(
                 cache_key_prefix, func.__name__, args, kwargs)
             t1 = datetime.now()
@@ -195,15 +188,15 @@ def request_time_cache(cache_key_prefix=DEFAULT_CACHE_PREFIX):
                 value = func(*args, **kwargs)
                 req_cache_set(cache_key, value)
                 ts = (datetime.now() - t1).total_seconds()
-                ctx.log.debug("RTCache %s MISS %s(%s) (%.3f secs)",
-                              request_id, func.__name__, cache_key, ts)
+                ctx.log.debug("RTCache MISS %s(%s) (%.3f secs)",
+                              func.__name__, cache_key, ts)
             else:
                 value = req_cache_get(cache_key)
                 if isinstance(value, ObjectsCursor):
                     value.cursor.rewind()
                 ts = (datetime.now() - t1).total_seconds()
-                ctx.log.debug("RTCache %s HIT  %s(%s) (%.3f secs)",
-                              request_id, func.__name__, cache_key, ts)
+                ctx.log.debug("RTCache HIT  %s(%s) (%.3f secs)",
+                              func.__name__, cache_key, ts)
             return value
         return wrapper
     return cache_decorator

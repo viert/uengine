@@ -3,12 +3,12 @@ import re
 
 from collections import namedtuple
 from math import ceil
-from flask import request
-from flask import json, make_response
+from flask import request, json, make_response
 
 from . import ctx
 
-ArithmeticExpression = namedtuple('_ArithmeticExpression', field_names=["op", "value"])
+ArithmeticExpression = namedtuple(
+    '_ArithmeticExpression', field_names=["op", "value"])
 
 DEFAULT_DOCUMENTS_PER_PAGE = 10
 ARITHMETIC_OPS = (
@@ -39,7 +39,8 @@ def get_page(nopaging=False):
 def get_limit(nopaging=False):
     if nopaging:
         return None
-    default_limit = ctx.cfg.get('documents_per_page', DEFAULT_DOCUMENTS_PER_PAGE)
+    default_limit = ctx.cfg.get(
+        'documents_per_page', DEFAULT_DOCUMENTS_PER_PAGE)
     if '_limit' in request.values:
         limit = request.values['_limit']
         try:
@@ -82,7 +83,8 @@ def paginated(data, page=None, limit=None, extra=None, transform=None):
         if limit is not None and page is not None:
             data = data.skip((page-1)*limit).limit(limit)
     else:
-        raise RuntimeError("paginated() accepts either cursor objects or lists")
+        raise RuntimeError(
+            "paginated() accepts either cursor objects or lists")
 
     if transform is not None:
         data = [transform(x) for x in data]
