@@ -29,6 +29,14 @@ database = {
     "shards": {}
 }
 
+redis = {
+    "host": "localhost",
+    "port": 6379,
+    "db": 0,
+    "options": {},
+    "channel": "ueq"
+}
+
 log_level = "debug"
 log_format = "[%(asctime)s] %(levelname)s\t%(module)-8.8s:%(lineno)-3d %(request_id)-8s %(message)s"
 debug = True

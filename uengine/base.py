@@ -15,6 +15,7 @@ from .errors import handle_api_error, handle_other_errors, ApiError
 from .sessions import MongoSessionInterface
 from .json_encoder import MongoJSONEncoder
 from .file_cache import FileCache
+from .queue import RedisQueue
 
 ENVIRONMENT_TYPES = ("development", "testing", "production")
 DEFAULT_ENVIRONMENT_TYPE = "development"
@@ -65,6 +66,7 @@ class Base:
         ctx.cfg = self.__read_config()
         ctx.log = self.__setup_logging()  # Requires ctx.cfg
         ctx.db = DB()  # Requires ctx.cfg
+        ctx.queue = self.__setup_queue()
         self.flask = self.__setup_flask()  # requires ctx.cfg and ctx.log
         self.__setup_error_handling()  # requires self.flask
         ctx.cache = self.__setup_cache()  # requires ctx.cfg and ctx.log
@@ -99,6 +101,17 @@ class Base:
         ctx.log.debug("Setting up a filecache")
         filecache_dir = ctx.cfg.get("filecache_dir", DEFAULT_FILECACHE_DIR)
         return FileCache(filecache_dir)
+
+    @staticmethod
+    def __setup_queue():
+        ctx.log.debug("Setting up a queue")
+        redis_cfg = ctx.cfg.get("redis")
+        if redis_cfg:
+            try:
+                q = RedisQueue(redis_cfg)
+                return q
+            except Exception as e:
+                ctx.log.error("Error configuring redis queue: %s", e)
 
     @staticmethod
     def __setup_logging():
