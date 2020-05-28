@@ -15,7 +15,7 @@ from .errors import handle_api_error, handle_other_errors, ApiError
 from .sessions import MongoSessionInterface
 from .json_encoder import MongoJSONEncoder
 from .file_cache import FileCache
-from .queue import RedisQueue
+from .queue import RedisQueue, RedisClusterQueue, MongoQueue
 
 ENVIRONMENT_TYPES = ("development", "testing", "production")
 DEFAULT_ENVIRONMENT_TYPE = "development"
@@ -105,13 +105,28 @@ class Base:
     @staticmethod
     def __setup_queue():
         ctx.log.debug("Setting up a queue")
-        redis_cfg = ctx.cfg.get("redis")
-        if redis_cfg:
-            try:
-                q = RedisQueue(redis_cfg)
-                return q
-            except Exception as e:
-                ctx.log.error("Error configuring redis queue: %s", e)
+        qcfg = ctx.cfg.get("queue")
+        if qcfg:
+            qtype = qcfg.get("type", "redis")
+
+            if qtype == "redis":
+                try:
+                    q = RedisQueue(qcfg)
+                    return q
+                except Exception as e:
+                    ctx.log.error("Error configuring redis queue: %s", e)
+            elif qtype == "redis-cluster":
+                try:
+                    q = RedisClusterQueue(qcfg)
+                    return q
+                except Exception as e:
+                    ctx.log.error("Error configuring redis-cluster queue: %s", e)
+            elif qtype == "mongo":
+                try:
+                    q = MongoQueue(qcfg)
+                    return q
+                except Exception as e:
+                    ctx.log.error("Error configuring mongo queue: %s", e)
 
     @staticmethod
     def __setup_logging():

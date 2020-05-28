@@ -29,11 +29,11 @@ database = {
     "shards": {}
 }
 
-redis = {
-    "host": "localhost",
-    "port": 6379,
-    "db": 0,
-    "options": {},
+queue = {
+    "type": "mongo",
+    # "host": "localhost",
+    # "port": 6379,
+    # "dbname": 0,
     "channel": "ueq"
 }
 
