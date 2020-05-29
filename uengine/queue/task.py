@@ -51,7 +51,7 @@ class BaseTask:
         BaseTask.TYPE_MAP[cls.TYPE] = cls
 
     def publish(self):
-        ctx.queue.enqueue(self)
+        return ctx.queue.enqueue(self)
 
     def __str__(self):
         return f"<{self.__class__.__name__} {self.TYPE} id={self.id} data={json.dumps(self.data)} " + \

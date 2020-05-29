@@ -117,8 +117,9 @@ class MongoQueue(AbstractQueue):
             msgs = self.coll_tasks.find({"chan": self.msgchannel}).sort("created_at", ASCENDING)
             if msgs.count() > 0:
                 for msg in msgs:
-                    self.ack(msg["_id"])
                     task = BaseTask.from_message(msg)
+                    self.ack(task.id)
+                    task.set_recv_by(self.msgchannel[len(self.prefix) + 1:])
                     yield task
             else:
                 sleep(0.1)
