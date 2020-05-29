@@ -47,9 +47,15 @@ class BaseTask:
         return task_class(task_id=task_id, data=data, created_at=created_at)
 
     @classmethod
-    def register(cls, task_class):
-        cls.TYPE_MAP[task_class.TYPE] = task_class
+    def register(cls):
+        BaseTask.TYPE_MAP[cls.TYPE] = cls
+
+    def publish(self):
+        ctx.queue.enqueue(self)
 
     def __str__(self):
         return f"<{self.__class__.__name__} {self.TYPE} id={self.id} data={json.dumps(self.data)} " + \
                f"created_at={self.created_at} received_by={self.received_by}>"
+
+    def __repr__(self):
+        return self.__str__()
