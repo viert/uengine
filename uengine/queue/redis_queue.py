@@ -16,7 +16,8 @@ class RedisQueue(AbstractQueue):
         try:
             from redis import Redis
         except ImportError:
-            raise RuntimeError("RedisQueue is not available, redis drivers are not installed")
+            raise RuntimeError(
+                "RedisQueue is not available, redis drivers are not installed")
 
         self.ack_timeout = qcfg.get("ack_timeout", 1)
         self.retries = qcfg.get("retries", 3)
@@ -70,10 +71,7 @@ class RedisQueue(AbstractQueue):
             sleep(.01)
         return None
 
-    def enqueue(self, task):
-        if not isinstance(task, BaseTask):
-            raise TypeError("only instances of Task are allowed")
-
+    def _enqueue(self, task):
         ack = None
         ackps = self.ackconn.pubsub(ignore_subscribe_messages=True)
         retries = self.retries
@@ -107,6 +105,7 @@ class RedisQueue(AbstractQueue):
 
     @property
     def tasks(self):
+        self.subscribe()
         for msg in self.ps.listen():
             try:
                 task = BaseTask.from_message(msg)
@@ -119,7 +118,8 @@ class RedisQueue(AbstractQueue):
     def get_random_channel(self):
         # the only way to get all the channels
         # active on server from redis client
-        channels = [ch.decode() for ch in self.conn.execute_command("PUBSUB channels")]
+        channels = [ch.decode()
+                    for ch in self.conn.execute_command("PUBSUB channels")]
         channels = [ch for ch in channels
                     if ch.startswith(self.prefix) and
                     not ch.endswith(self.ACK_POSTFIX)]

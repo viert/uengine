@@ -35,7 +35,8 @@ class MongoQueue(AbstractQueue):
     def ensure_indexes(self):
         self.coll_subs.ensure_index("updated_at")
         self.coll_subs.ensure_index("chan")
-        self.coll_tasks.ensure_index([("chan", ASCENDING), ("created_at", ASCENDING)])
+        self.coll_tasks.ensure_index(
+            [("chan", ASCENDING), ("created_at", ASCENDING)])
 
     def cleanup_channels(self):
         min_date = now() - self.channel_ttl
@@ -77,19 +78,18 @@ class MongoQueue(AbstractQueue):
     def ack(self, task_id):
         # generate ack
         ctx.log.debug("ACK {ins_id: %s, chan: %s}", task_id, self.ackchannel)
-        self.coll_tasks.insert_one({"ins_id": task_id, "chan": self.ackchannel})
+        self.coll_tasks.insert_one(
+            {"ins_id": task_id, "chan": self.ackchannel})
         # remove task doc
         ctx.log.debug("DELETE {_id: %s}", task_id)
         self.coll_tasks.delete_one({"_id": task_id})
 
     def publish(self, chan, data):
-        res = self.coll_tasks.insert_one({"chan": chan, "data": data, "created_at": now()})
+        res = self.coll_tasks.insert_one(
+            {"chan": chan, "data": data, "created_at": now()})
         return res.inserted_id
 
-    def enqueue(self, task):
-        if not isinstance(task, BaseTask):
-            raise TypeError("only instances of Task are allowed")
-
+    def _enqueue(self, task):
         ack = None
         retries = self.retries
         while retries > 0:
@@ -114,7 +114,8 @@ class MongoQueue(AbstractQueue):
         self.subscribe()
         resub_at = now() + timedelta(seconds=10)
         while True:
-            msgs = self.coll_tasks.find({"chan": self.msgchannel}).sort("created_at", ASCENDING)
+            msgs = self.coll_tasks.find(
+                {"chan": self.msgchannel}).sort("created_at", ASCENDING)
             if msgs.count() > 0:
                 for msg in msgs:
                     task = BaseTask.from_message(msg)
