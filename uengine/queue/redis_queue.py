@@ -1,7 +1,6 @@
 import socket
 import random
 from time import time, sleep
-from rediscluster import RedisCluster
 from redis import Redis
 
 from .abstract_queue import AbstractQueue
@@ -129,22 +128,3 @@ class RedisQueue(AbstractRedisQueue):
         rand = random.randrange(0, len(channels))
         return channels[rand], channels[rand] + self.ACK_POSTFIX
 
-
-class RedisClusterQueue(AbstractRedisQueue):
-
-    def init_conn(self):
-        ctx.log.info("creating a new redis connection")
-        nodes = self.cfg.get("nodes")
-        password = self.cfg.get("password")
-        r = RedisCluster(startup_nodes=nodes, password=password)
-        return r
-
-    def get_random_channel(self):
-        # pubsub_channels() is a cluster-wide method, merging
-        # all the channels from different nodes
-        channels = [ch.decode() for ch in self.conn.pubsub_channels()]
-        channels = [ch for ch in channels
-                    if ch.startswith(self.prefix) and
-                    not ch.endswith(self.ACK_POSTFIX)]
-        rand = random.randrange(0, len(channels))
-        return channels[rand], channels[rand] + self.ACK_POSTFIX
