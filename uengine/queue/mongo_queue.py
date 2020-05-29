@@ -16,6 +16,7 @@ class MongoQueue(AbstractQueue):
 
     def __init__(self, qcfq):
         super(MongoQueue, self).__init__(qcfq)
+        self._initialized = False
         self.task_collection = self.cfg.get("collection", "mq_tasks")
         self.subs_collection = self.task_collection + "_subs"
         self.prefix = self.cfg.get("channel", "ueq")
@@ -29,8 +30,10 @@ class MongoQueue(AbstractQueue):
         self.msgchannel = f"{self.prefix}:{fqdn}:{rand}"
         self.ackchannel = f"{self.prefix}:{fqdn}:{rand}:ack"
 
+    def initialize(self):
         self.ensure_indexes()
         self.cleanup_channels()
+        self._initialized = True
 
     def ensure_indexes(self):
         self.coll_subs.ensure_index("updated_at")
@@ -90,6 +93,8 @@ class MongoQueue(AbstractQueue):
         return res.inserted_id
 
     def _enqueue(self, task):
+        if not self._initialized:
+            self.initialize()
         ack = None
         retries = self.retries
         while retries > 0:
@@ -111,6 +116,8 @@ class MongoQueue(AbstractQueue):
 
     @property
     def tasks(self):
+        if not self._initialized:
+            self.initialize()
         self.subscribe()
         resub_at = now() + timedelta(seconds=10)
         while True:
