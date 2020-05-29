@@ -118,7 +118,7 @@ class MongoQueue(AbstractQueue):
             if msgs.count() > 0:
                 for msg in msgs:
                     task = BaseTask.from_message(msg)
-                    self.ack(task.id)
+                    self.ack(msg["_id"])
                     task.set_recv_by(self.msgchannel[len(self.prefix) + 1:])
                     yield task
             else:
