@@ -1,17 +1,23 @@
 import socket
 import random
 from time import time, sleep
-from redis import Redis
+
+from uengine import ctx
 
 from .abstract_queue import AbstractQueue
 from .task import BaseTask
-from uengine import ctx
 
 
-class AbstractRedisQueue(AbstractQueue):
+class RedisQueue(AbstractQueue):
 
     def __init__(self, qcfg):
-        super(AbstractRedisQueue, self).__init__(qcfg)
+        super(RedisQueue, self).__init__(qcfg)
+
+        try:
+            from redis import Redis
+        except ImportError:
+            raise RuntimeError("RedisQueue is not available, redis drivers are not installed")
+
         self.ack_timeout = qcfg.get("ack_timeout", 1)
         self.retries = qcfg.get("retries", 3)
 
@@ -27,7 +33,14 @@ class AbstractRedisQueue(AbstractQueue):
         self.ackchannel = f"{self.prefix}:{fqdn}:{rand}:ack"
 
     def init_conn(self):
-        raise NotImplementedError("abstract queue")
+        from redis import Redis
+        ctx.log.info("creating a new redis connection")
+        host = self.cfg.get("host", "127.0.0.1")
+        port = self.cfg.get("port", 6379)
+        db = self.cfg.get("dbname", 0)
+        password = self.cfg.get("password")
+        r = Redis(host=host, port=port, db=db, password=password)
+        return r
 
     @property
     def conn(self):
@@ -46,9 +59,6 @@ class AbstractRedisQueue(AbstractQueue):
         if self._ps is None:
             self._ps = self.conn.pubsub(ignore_subscribe_messages=True)
         return self._ps
-
-    def get_random_channel(self):
-        raise NotImplementedError("abstract queue")
 
     @staticmethod
     def wait_for_msg(pubsub, timeout):
@@ -106,18 +116,6 @@ class AbstractRedisQueue(AbstractQueue):
             except Exception as e:
                 ctx.log.error("error receiving message: %s", e)
 
-
-class RedisQueue(AbstractRedisQueue):
-
-    def init_conn(self):
-        ctx.log.info("creating a new redis connection")
-        host = self.cfg.get("host", "127.0.0.1")
-        port = self.cfg.get("port", 6379)
-        db = self.cfg.get("dbname", 0)
-        password = self.cfg.get("password")
-        r = Redis(host=host, port=port, db=db, password=password)
-        return r
-
     def get_random_channel(self):
         # the only way to get all the channels
         # active on server from redis client
@@ -127,4 +125,3 @@ class RedisQueue(AbstractRedisQueue):
                     not ch.endswith(self.ACK_POSTFIX)]
         rand = random.randrange(0, len(channels))
         return channels[rand], channels[rand] + self.ACK_POSTFIX
-
