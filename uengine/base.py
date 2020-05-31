@@ -15,7 +15,7 @@ from .errors import handle_api_error, handle_other_errors, ApiError
 from .sessions import MongoSessionInterface
 from .json_encoder import MongoJSONEncoder
 from .file_cache import FileCache
-from .queue import RedisQueue, MongoQueue
+from .queue import RedisQueue, MongoQueue, DummyQueue
 
 ENVIRONMENT_TYPES = ("development", "testing", "production")
 DEFAULT_ENVIRONMENT_TYPE = "development"
@@ -120,6 +120,12 @@ class Base:
                 return q
             except Exception as e:
                 ctx.log.error("Error configuring mongo queue: %s", e)
+        elif qtype == "dummy":
+            try:
+                q = DummyQueue(qcfg)
+                return q
+            except Exception as e:
+                ctx.log.error("Error configuring dummy queue: %s", e)
 
     @staticmethod
     def __setup_logging():
