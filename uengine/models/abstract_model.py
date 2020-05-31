@@ -263,6 +263,7 @@ class AbstractModel(metaclass=ModelMeta):
         self._delete_from_db()
         if not skip_callback:
             self._after_delete()
+        old_id = self._id
         self._id = None
         for hook in self._hooks:
             try:
@@ -271,7 +272,7 @@ class AbstractModel(metaclass=ModelMeta):
                 ctx.log.error("error executing destroy hook %s on model %s(%s): %s",
                               hook.__class__.__name__, self.__class__.__name__, self._id, e)
         if invalidate_cache:
-            self.invalidate()
+            self.invalidate(_id=old_id)
         return self
 
     def save(self, skip_callback=False, invalidate_cache=True):

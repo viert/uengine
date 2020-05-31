@@ -1,5 +1,6 @@
 # pylint: disable=protected-access
 
+from uengine import ctx
 from uengine.models.storable_model import StorableModel
 from .mongo_mock import MongoMockTest
 
@@ -98,3 +99,22 @@ class TestStorableModel(MongoMockTest):
         self.assertEqual(model1.field2, "mymodel_updated")
         self.assertEqual(model2.field2, "mymodel_updated")
         self.assertEqual(model3.field2, "mymodel_update_test")
+
+    def test_invalidate(self):
+        model1 = TestModel(field1="f1", field2="f2", field3="f3")
+        model1.save()
+        self.assertFalse(ctx.cache.has(f"test_model.{model1._id}"))
+
+        m = model1.cache_get(model1._id)
+        self.assertIsNotNone(m)
+        self.assertTrue(ctx.cache.has(f"test_model.{model1._id}"))
+
+        model1.save()
+        self.assertFalse(ctx.cache.has(f"test_model.{model1._id}"))
+
+        m = model1.cache_get(model1._id)
+        self.assertIsNotNone(m)
+        self.assertTrue(ctx.cache.has(f"test_model.{model1._id}"))
+
+        m.destroy()
+        self.assertFalse(ctx.cache.has(f"test_model.{model1._id}"))

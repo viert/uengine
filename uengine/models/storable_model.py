@@ -168,8 +168,10 @@ class StorableModel(AbstractModel):
 
         return cr_layer1_id, cr_layer1_keyfield, cr_layer2_id, cr_layer2_keyfield
 
-    def invalidate(self):
-        cache_key_id = f"{self.collection}.{self._id}"
+    def invalidate(self, _id=None):
+        if _id is None:
+            _id = self._id
+        cache_key_id = f"{self.collection}.{_id}"
         cache_key_keyfield = None
         if self.KEY_FIELD is not None and self.KEY_FIELD != "_id":
             cache_key_keyfield = f"{self.collection}.{getattr(self, self.KEY_FIELD)}"
