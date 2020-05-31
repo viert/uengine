@@ -24,9 +24,6 @@ class AbstractQueue:
     def subscribe(self):
         raise NotImplementedError("abstract queue")
 
-    def get_message(self, **kwrds):
-        raise NotImplementedError("abstract queue")
-
     @property
     def tasks(self):
         raise NotImplementedError("abstract queue")
