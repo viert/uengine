@@ -47,6 +47,12 @@ class FieldRequired(ApiError):
                           field_name, status_code=400)
 
 
+# special exception to silently avoid saving
+# in _before_save
+class DoNotSave(Exception):
+    pass
+
+
 def merge_set(attr, new_cls, bases):
     merged = set()
     valid_types = (list, set, frozenset, tuple)
@@ -272,7 +278,11 @@ class AbstractModel(metaclass=ModelMeta):
         is_new = self.is_new
 
         if not skip_callback:
-            self._before_validation()
+            try:
+                self._before_validation()
+            except DoNotSave:
+                return
+
         self._validate()
 
         # autotrim
@@ -285,7 +295,10 @@ class AbstractModel(metaclass=ModelMeta):
                 pass
 
         if not skip_callback:
-            self._before_save()
+            try:
+                self._before_save()
+            except DoNotSave:
+                return
         self._save_to_db()
 
         for hook in self._hooks:
