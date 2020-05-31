@@ -9,7 +9,6 @@ from .abstract_queue import AbstractQueue
 from .task import BaseTask
 
 
-
 class RedisQueue(AbstractQueue):
 
     def __init__(self, qcfg):
@@ -30,7 +29,7 @@ class RedisQueue(AbstractQueue):
         self._ps = None
         self.prefix = self.cfg.get("channel", "ueq")
 
-        fqdn = socket.getfqdn()
+        fqdn = socket.gethostname()
         rand = random.randint(0, 10000)
         self.msgchannel = f"{self.prefix}:{fqdn}:{rand}"
         self.ackchannel = f"{self.prefix}:{fqdn}:{rand}:ack"

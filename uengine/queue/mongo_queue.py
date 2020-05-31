@@ -25,7 +25,7 @@ class MongoQueue(AbstractQueue):
         self.ack_timeout = self.cfg.get("ack_timeout", 1)
         self.retries = self.cfg.get("retries", 5)
 
-        fqdn = socket.getfqdn()
+        fqdn = socket.gethostname()
         rand = random.randint(0, 10000)
         self.msgchannel = f"{self.prefix}:{fqdn}:{rand}"
         self.ackchannel = f"{self.prefix}:{fqdn}:{rand}:ack"
