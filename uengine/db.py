@@ -170,14 +170,16 @@ class _DB:
     def get_rw_client(self):
         if not self._rw_client:
             client_kwargs = self._config.get("pymongo_extra", {})
-            self._rw_client = pymongo.MongoClient(self._config["uri"], **client_kwargs)
+            self._rw_client = pymongo.MongoClient(
+                self._config["uri"], **client_kwargs)
         return self._rw_client
 
     def get_ro_client(self):
         if not self._ro_client:
             client_kwargs = self._config.get("pymongo_extra", {})
             if "uri_ro" in self._config:
-                self._ro_client = pymongo.MongoClient(self._config["uri_ro"], **client_kwargs)
+                self._ro_client = pymongo.MongoClient(
+                    self._config["uri_ro"], **client_kwargs)
         return self._ro_client
 
     def init_ro_conn(self):
@@ -261,6 +263,10 @@ class _DB:
         cursor = self.ro_conn[collection].aggregate(pipeline, **kwargs)
         return cursor
 
+    @intercept_mongo_errors_ro
+    def count_docs(self, collection, query, **kwargs):
+        return self.ro_conn[collection].count_documents(query, **kwargs)
+
     def get_objs_by_field_in(self, cls, collection, field, values, **kwargs):
         return self.get_objs(
             cls,
@@ -291,7 +297,8 @@ class _DB:
     def delete_obj(self, obj):
         if obj.is_new:
             return
-        self.conn[obj.collection].delete_one({'_id': obj._id}, session=self._session)
+        self.conn[obj.collection].delete_one(
+            {'_id': obj._id}, session=self._session)
 
     @intercept_mongo_errors_rw
     def find_and_update_obj(self, obj, update, when=None):
