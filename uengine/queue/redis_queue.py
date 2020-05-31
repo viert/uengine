@@ -1,11 +1,13 @@
 import socket
 import random
 from time import time, sleep
+from flask import json
 
 from uengine import ctx
 
 from .abstract_queue import AbstractQueue
 from .task import BaseTask
+
 
 
 class RedisQueue(AbstractQueue):
@@ -78,7 +80,8 @@ class RedisQueue(AbstractQueue):
         while retries > 0:
             chan, ackchan = self.get_random_channel()
             ackps.subscribe(ackchan)
-            self.conn.publish(chan, task.to_message())
+            dump = json.dumps(task.to_message())
+            self.conn.publish(chan, dump)
             ack = self.wait_for_msg(ackps, self.ack_timeout)
             ackps.unsubscribe(ackchan)
             if ack:
@@ -106,8 +109,13 @@ class RedisQueue(AbstractQueue):
     @property
     def tasks(self):
         self.subscribe()
-        for msg in self.ps.listen():
+        for redismsg in self.ps.listen():
             try:
+                try:
+                    msg = json.loads(redismsg["data"])
+                except:
+                    ctx.log.error("malformed message dump: %s", redismsg)
+                    continue
                 task = BaseTask.from_message(msg)
                 self.ack(task.id)
                 task.set_recv_by(self.msgchannel[len(self.prefix)+1:])

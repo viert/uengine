@@ -15,12 +15,12 @@ class BaseTask:
         self.received_by = None
 
     def to_message(self):
-        return json.dumps({
+        return {
             "id": self.id,
             "type": self.TYPE,
-            "data": self.data,
+            "data": json.dumps(self.data),
             "created_at": self.created_at
-        })
+        }
 
     def set_recv_by(self, recv_by):
         self.received_by = recv_by
@@ -33,13 +33,10 @@ class BaseTask:
     def from_message(cls, msg):
         if "data" not in msg:
             ctx.log.error("malformed message, no data field: %s", msg)
-        msg = msg["data"]
-        if isinstance(msg, str) or isinstance(msg, bytes):
-            msg = json.loads(msg)
         task_id = msg["id"]
         task_type = msg["type"]
         created_at = msg["created_at"]
-        data = msg["data"]
+        data = json.loads(msg["data"])
         if task_type in cls.TYPE_MAP:
             task_class = cls.TYPE_MAP[task_type]
         else:

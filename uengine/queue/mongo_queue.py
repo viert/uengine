@@ -87,9 +87,9 @@ class MongoQueue(AbstractQueue):
         ctx.log.debug("DELETE {_id: %s}", task_id)
         self.coll_tasks.delete_one({"_id": task_id})
 
-    def publish(self, chan, data):
+    def publish(self, chan, message):
         res = self.coll_tasks.insert_one(
-            {"chan": chan, "data": data, "created_at": now()})
+            {"chan": chan, "data": message, "created_at": now()})
         return res.inserted_id
 
     def _enqueue(self, task):
@@ -121,12 +121,12 @@ class MongoQueue(AbstractQueue):
         self.subscribe()
         resub_at = now() + timedelta(seconds=10)
         while True:
-            msgs = self.coll_tasks.find(
+            items = self.coll_tasks.find(
                 {"chan": self.msgchannel}).sort("created_at", ASCENDING)
-            if msgs.count() > 0:
-                for msg in msgs:
-                    task = BaseTask.from_message(msg)
-                    self.ack(msg["_id"])
+            if items.count() > 0:
+                for item in items:
+                    task = BaseTask.from_message(item["data"])
+                    self.ack(item["_id"])
                     task.set_recv_by(self.msgchannel[len(self.prefix) + 1:])
                     yield task
             else:
