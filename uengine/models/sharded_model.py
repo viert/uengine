@@ -109,8 +109,10 @@ class ShardedModel(StorableModel):
         obj.shard_id = shard_id
         return obj
 
-    def invalidate(self):
-        cache_key_id = f"{self.collection}.{self._shard_id}.{self._id}"
+    def invalidate(self, _id=None):
+        if _id is None:
+            _id = self._id
+        cache_key_id = f"{self.collection}.{self._shard_id}.{_id}"
         cache_key_keyfield = None
         if self.KEY_FIELD is not None and self.KEY_FIELD != "_id":
             cache_key_keyfield = f"{self.collection}.{self._shard_id}.{getattr(self, self.KEY_FIELD)}"
