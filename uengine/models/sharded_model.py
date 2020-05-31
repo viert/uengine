@@ -29,11 +29,11 @@ class ShardedModel(StorableModel):
     def _db(self):
         return ctx.db.shards[self._shard_id]
 
-    def save(self, skip_callback=False):
+    def save(self, skip_callback=False, invalidate_cache=True):
         if self._shard_id is None:
             raise MissingShardId(
                 "ShardedModel must have shard_id set before save")
-        super().save(skip_callback)
+        super().save(skip_callback, invalidate_cache)
 
     def _refetch_from_db(self):
         return self.find_one(self._shard_id, {"_id": self._id})

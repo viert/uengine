@@ -62,7 +62,8 @@ class SubmodelMeta(ModelMeta):
     @staticmethod
     def _get_collection(model_cls, name, bases, dct):
         # SubModels inherit their collections from parent classes.
-        if hasattr(model_cls, "COLLECTION") and model_cls.COLLECTION:  # Either set explicitly or inherited
+        # Either set explicitly or inherited
+        if hasattr(model_cls, "COLLECTION") and model_cls.COLLECTION:
             return model_cls.COLLECTION
 
         return None  # No autogeneration
@@ -88,13 +89,16 @@ class BaseSubmodelMixin:
         super().__init__(**data)
         if self.is_new:
             if not self.SUBMODEL:
-                raise IntegrityError(f"Attempted to create an object of abstract model {self.__class__.__name__}")
+                raise IntegrityError(
+                    f"Attempted to create an object of abstract model {self.__class__.__name__}")
             if "submodel" in data:
-                raise InputDataError("Attempt to override submodel for a new object")
+                raise InputDataError(
+                    "Attempt to override submodel for a new object")
             self.submodel = self.SUBMODEL
         else:
             if not self.submodel:
-                raise MissingSubmodel(f"{self.__class__.__name__} has no submodel in the DB. Bug?")
+                raise MissingSubmodel(
+                    f"{self.__class__.__name__} has no submodel in the DB. Bug?")
             self._check_submodel()
 
     def _check_submodel(self):
@@ -111,7 +115,8 @@ class BaseSubmodelMixin:
     @classmethod
     def register_submodel(cls, name, constructor):
         if cls.SUBMODEL:
-            raise IntegrityError("Attempted to register a submodel with another submodel")
+            raise IntegrityError(
+                "Attempted to register a submodel with another submodel")
         if not cls.__submodel_loaders:
             cls.__submodel_loaders = {}
         if name in cls.__submodel_loaders:
@@ -121,12 +126,14 @@ class BaseSubmodelMixin:
     @classmethod
     def from_data(cls, **data):
         if "submodel" not in data:
-            raise MissingSubmodel(f"{cls.__name__} has no submodel in the DB. Bug?")
+            raise MissingSubmodel(
+                f"{cls.__name__} has no submodel in the DB. Bug?")
         if not cls.__submodel_loaders:
             return cls(**data)
         submodel_name = data["submodel"]
         if submodel_name not in cls.__submodel_loaders:
-            raise UnknownSubmodel(f"Submodel {submodel_name} is not registered with {cls.__name__}")
+            raise UnknownSubmodel(
+                f"Submodel {submodel_name} is not registered with {cls.__name__}")
         return cls.__submodel_loaders[submodel_name](**data)
 
     @classmethod
