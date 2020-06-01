@@ -19,6 +19,9 @@ class DummyQueue(AbstractQueue):
     def subscribe(self):
         pass
 
+    def list_active_channels(self):
+        return [{"chan": "dummy:local"}]
+
     @property
     def tasks(self):
         while len(self.queue):

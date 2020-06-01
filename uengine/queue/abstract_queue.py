@@ -24,6 +24,9 @@ class AbstractQueue:
     def subscribe(self):
         raise NotImplementedError("abstract queue")
 
+    def list_active_channels(self):
+        raise NotImplementedError("abstract queue")
+
     @property
     def tasks(self):
         raise NotImplementedError("abstract queue")

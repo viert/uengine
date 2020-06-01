@@ -57,9 +57,13 @@ class MongoQueue(AbstractQueue):
         self.coll_subs.replace_one({"chan": self.msgchannel},
                                    {"chan": self.msgchannel, "updated_at": now()}, upsert=True)
 
-    def get_random_channel(self):
+    def list_active_channels(self):
         min_date = now() - self.channel_ttl
         channels = list(self.coll_subs.find({"updated_at": {"$gt": min_date}}))
+        return channels
+
+    def get_random_channel(self):
+        channels = self.list_active_channels()
         if len(channels) == 0:
             return None, None
         rand = random.randrange(0, len(channels))

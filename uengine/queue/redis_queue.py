@@ -122,13 +122,18 @@ class RedisQueue(AbstractQueue):
             except Exception as e:
                 ctx.log.error("error receiving message: %s", e)
 
-    def get_random_channel(self):
+    def list_active_channels(self):
         # the only way to get all the channels
-        # active on server from redis client
+        # active on server from redis client is
+        # running an explicit PUBSUB channels command
         channels = [ch.decode()
                     for ch in self.conn.execute_command("PUBSUB channels")]
         channels = [ch for ch in channels
                     if ch.startswith(self.prefix) and
                     not ch.endswith(self.ACK_POSTFIX)]
+        return channels
+
+    def get_random_channel(self):
+        channels = self.list_active_channels()
         rand = random.randrange(0, len(channels))
         return channels[rand], channels[rand] + self.ACK_POSTFIX
