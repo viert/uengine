@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="uengine",
-    version="3.5.19",
+    version="3.5.20",
     description="a micro webframework based on flask and pymongo",
     url="https://github.com/viert/uengine",
     author="Pavel Vorobyov",
