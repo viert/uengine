@@ -203,5 +203,4 @@ def request_time_cache(cache_key_prefix=DEFAULT_CACHE_PREFIX):
 
 
 def patch_delete_many(self, *keys):
-    r = (self.delete(key) for key in keys)
-    return all(r)
+    return all([self.delete(key) for key in keys])
