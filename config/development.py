@@ -30,7 +30,7 @@ database = {
 }
 
 queue = {
-    "type": "redis",
+    "type": "mongo",
     "host": "localhost",
     "port": 6379,
     "dbname": 0,

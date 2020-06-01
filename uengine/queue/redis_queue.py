@@ -5,8 +5,8 @@ from flask import json
 
 from uengine import ctx
 
-from .abstract_queue import AbstractQueue
-from .task import BaseTask
+from .abstract_queue import AbstractQueue, DEFAULT_ACK_TIMEOUT, DEFAULT_RETRIES
+from .task import BaseTask, TaskSendError
 
 
 class RedisQueue(AbstractQueue):
@@ -20,8 +20,8 @@ class RedisQueue(AbstractQueue):
             raise RuntimeError(
                 "RedisQueue is not available, redis drivers are not installed")
 
-        self.ack_timeout = qcfg.get("ack_timeout", 1)
-        self.retries = qcfg.get("retries", 3)
+        self.ack_timeout = qcfg.get("ack_timeout", DEFAULT_ACK_TIMEOUT)
+        self.retries = qcfg.get("retries", DEFAULT_RETRIES)
 
         # client instances
         self._conn = None
@@ -78,6 +78,15 @@ class RedisQueue(AbstractQueue):
         retries = self.retries
         while retries > 0:
             chan, ackchan = self.get_random_channel()
+            if chan is None:
+                retries -= 1
+                if retries > 0:
+                    sleep(.5)
+                    ctx.log.debug(
+                        "no active channels found, resending, %d retries left", retries)
+                    continue
+                else:
+                    raise TaskSendError("no active channels")
             ackps.subscribe(ackchan)
             dump = json.dumps(task.to_message())
             self.conn.publish(chan, dump)
@@ -86,8 +95,12 @@ class RedisQueue(AbstractQueue):
             if ack:
                 break
             retries -= 1
-            ctx.log.debug("error receiving ack for task id %s, resending, %d retries left",
-                          task.id, retries)
+            if retries > 0:
+                ctx.log.debug("error receiving ack for task id %s, resending, %d retries left",
+                              task.id, retries)
+            else:
+                raise TaskSendError(
+                    f"error receiving ack after {self.retries} retries")
 
         if ack:
             recvchan = ack["channel"].decode()
@@ -135,5 +148,7 @@ class RedisQueue(AbstractQueue):
 
     def get_random_channel(self):
         channels = self.list_active_channels()
+        if len(channels) == 0:
+            return None, None
         rand = random.randrange(0, len(channels))
         return channels[rand], channels[rand] + self.ACK_POSTFIX

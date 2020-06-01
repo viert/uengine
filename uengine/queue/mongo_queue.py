@@ -5,8 +5,8 @@ from datetime import timedelta
 from time import time, sleep
 from flask import json
 
-from .abstract_queue import AbstractQueue
-from .task import BaseTask
+from .abstract_queue import AbstractQueue, DEFAULT_ACK_TIMEOUT, DEFAULT_RETRIES
+from .task import BaseTask, TaskSendError
 
 from uengine.utils import now
 from uengine import ctx
@@ -20,10 +20,10 @@ class MongoQueue(AbstractQueue):
         self.task_collection = self.cfg.get("collection", "mq_tasks")
         self.subs_collection = self.task_collection + "_subs"
         self.prefix = self.cfg.get("channel", "ueq")
-        self.channel_ttl = self.cfg.get("channel_ttl", 30)
+        self.channel_ttl = self.cfg.get("channel_ttl", 5)
         self.channel_ttl = timedelta(seconds=self.channel_ttl)
-        self.ack_timeout = self.cfg.get("ack_timeout", 1)
-        self.retries = self.cfg.get("retries", 5)
+        self.ack_timeout = self.cfg.get("ack_timeout", DEFAULT_ACK_TIMEOUT)
+        self.retries = self.cfg.get("retries", DEFAULT_RETRIES)
 
         fqdn = socket.gethostname()
         rand = random.randint(0, 10000)
@@ -99,31 +99,44 @@ class MongoQueue(AbstractQueue):
     def _enqueue(self, task):
         if not self._initialized:
             self.initialize()
+
         ack = None
         retries = self.retries
         while retries > 0:
             chan, ackchan = self.get_random_channel()
             if chan is None:
-                return None
+                sleep(.5)
+                retries -= 1
+                if retries > 0:
+                    ctx.log.error(
+                        "no active channels found, resending, %d retries left", retries)
+                    continue
+                else:
+                    raise TaskSendError("no active channels")
             ins_id = self.publish(chan, task.to_message())
             ack = self.wait_ack(ins_id, ackchan)
             if ack:
                 break
             retries -= 1
+            if retries > 0:
+                ctx.log.debug("error receiving ack for task id %s, resending, %d retries left",
+                              task.id, retries)
+            else:
+                raise TaskSendError(
+                    f"error receiving ack after {self.retries} retries")
 
-        if ack:
-            recvchan = ack["chan"]
-            receiver = recvchan[len(self.prefix) + 1:-len(self.ACK_POSTFIX)]
-            task.set_recv_by(receiver)
-
+        recvchan = ack["chan"]
+        receiver = recvchan[len(self.prefix) + 1:-len(self.ACK_POSTFIX)]
+        task.set_recv_by(receiver)
         return ack
 
     @property
     def tasks(self):
+        resub_interval = timedelta(seconds=self.channel_ttl//2)
         if not self._initialized:
             self.initialize()
         self.subscribe()
-        resub_at = now() + timedelta(seconds=10)
+        resub_at = now() + resub_interval
         while True:
             items = self.coll_tasks.find(
                 {"chan": self.msgchannel}).sort("created_at", ASCENDING)
@@ -137,4 +150,4 @@ class MongoQueue(AbstractQueue):
                 sleep(0.1)
             if now() > resub_at:
                 self.subscribe()
-                resub_at = now() + timedelta(seconds=10)
+                resub_at = now() + resub_interval

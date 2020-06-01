@@ -56,3 +56,14 @@ class BaseTask:
 
     def __repr__(self):
         return self.__str__()
+
+
+class BasePingTask(BaseTask):
+    TYPE = "BASE_PING"
+
+
+BasePingTask.register()
+
+
+class TaskSendError(Exception):
+    pass

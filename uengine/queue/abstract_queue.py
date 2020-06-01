@@ -1,5 +1,8 @@
 from .task import BaseTask
 
+DEFAULT_RETRIES = 5
+DEFAULT_ACK_TIMEOUT = 1
+
 
 class AbstractQueue:
 
