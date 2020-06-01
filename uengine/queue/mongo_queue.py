@@ -21,7 +21,6 @@ class MongoQueue(AbstractQueue):
         self.subs_collection = self.task_collection + "_subs"
         self.prefix = self.cfg.get("channel", "ueq")
         self.channel_ttl = self.cfg.get("channel_ttl", 5)
-        self.channel_ttl = timedelta(seconds=self.channel_ttl)
         self.ack_timeout = self.cfg.get("ack_timeout", DEFAULT_ACK_TIMEOUT)
         self.retries = self.cfg.get("retries", DEFAULT_RETRIES)
 
@@ -42,7 +41,7 @@ class MongoQueue(AbstractQueue):
             [("chan", ASCENDING), ("created_at", ASCENDING)])
 
     def cleanup_channels(self):
-        min_date = now() - self.channel_ttl
+        min_date = now() - timedelta(seconds=self.channel_ttl)
         self.coll_subs.delete_many({"updated_at": {"$lt": min_date}})
 
     @property
@@ -58,7 +57,7 @@ class MongoQueue(AbstractQueue):
                                    {"chan": self.msgchannel, "updated_at": now()}, upsert=True)
 
     def list_active_channels(self):
-        min_date = now() - self.channel_ttl
+        min_date = now() - timedelta(seconds=self.channel_ttl)
         channels = list(self.coll_subs.find({"updated_at": {"$gt": min_date}}))
         return channels
 
