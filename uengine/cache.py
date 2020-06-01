@@ -200,3 +200,8 @@ def request_time_cache(cache_key_prefix=DEFAULT_CACHE_PREFIX):
             return value
         return wrapper
     return cache_decorator
+
+
+def patch_delete_many(self, *keys):
+    r = (self.delete(key) for key in keys)
+    return all(r)

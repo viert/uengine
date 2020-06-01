@@ -94,6 +94,8 @@ class Base:
         if "memcache_backends" in ctx.cfg:
             return MemcachedCache(ctx.cfg.get("memcache_backends"))
 
+        from .cache import patch_delete_many
+        SimpleCache.delete_many = patch_delete_many
         return SimpleCache()
 
     @staticmethod
