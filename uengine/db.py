@@ -6,7 +6,10 @@ from time import sleep
 from datetime import datetime
 from random import randint
 from pymongo.errors import ServerSelectionTimeoutError
+from pymongo.uri_parser import parse_uri
 from uengine.errors import InvalidShardId
+from urllib.parse import quote_plus, urlencode
+
 
 from . import ctx
 
@@ -166,6 +169,37 @@ class _DB:
     def reset_ro_conn(self):
         self._ro_client = None
         self._ro_conn = None
+
+    def _process_uri(self, uri):  # TODO: remove after everything is migrated to URIs
+        parsed_uri = parse_uri(uri)
+        if not parsed_uri["database"]:
+            parsed_uri["database"] = self._config.get("dbname")
+        if not parsed_uri["username"]:
+            parsed_uri["username"] = self._config.get("username")
+        if not parsed_uri["password"]:
+            parsed_uri["password"] = self._config.get("password")
+        auth = ""
+        if parsed_uri["username"] and parsed_uri["password"]:
+            auth="{}:{}@".format(
+                quote_plus(parsed_uri["username"]),
+                quote_plus(parsed_uri["password"]),
+            )
+        return "mongodb://{auth}{nodes}/{db}?{options}".format(
+            auth=auth,
+            nodes=",".join(f"{h}:{p}" for h,p in parsed_uri["nodelist"]),
+            db=parsed_uri["database"] if parsed_uri["database"] else "",
+            options=urlencode(parsed_uri["options"])
+        )
+
+    @property
+    def uri(self):
+        return self._process_uri(self._config["uri"])
+
+    @property
+    def uri_ro(self):
+        if "uri_ro" in self._config:
+            return self._process_uri(self._config["uri_ro"])
+        return None
 
     def get_rw_client(self):
         if not self._rw_client:
