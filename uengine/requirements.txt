@@ -6,4 +6,3 @@ lazy_object_proxy
 bumpversion
 cachelib
 redis
-git+git://github.com/Grokzen/redis-py-cluster.git
