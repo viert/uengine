@@ -256,7 +256,6 @@ class _DB:
         return self._ro_conn
 
     @intercept_mongo_errors_ro
-    @ctx.line_profiler
     def get_obj(self, cls, collection, query):
         if not isinstance(query, dict):
             try:
