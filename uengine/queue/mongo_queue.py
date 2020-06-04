@@ -118,7 +118,7 @@ class MongoQueue(AbstractQueue):
                 break
             retries -= 1
             if retries > 0:
-                ctx.log.debug("error receiving ack for task id %s, resending, %d retries left",
+                ctx.log.error("error receiving ack for task id %s, resending, %d retries left",
                               task.id, retries)
             else:
                 raise TaskSendError(

@@ -1,5 +1,5 @@
 from .task import BaseTask
-
+from ..context import ctx
 DEFAULT_RETRIES = 5
 DEFAULT_ACK_TIMEOUT = 1
 
@@ -16,7 +16,11 @@ class AbstractQueue:
             raise TypeError("only instances of Task are allowed")
         if task.received:
             raise RuntimeError("task is already received by a subscriber")
-        self._enqueue(task)
+        ctx.log.debug("%s: enqueue task %s", self.__class__.__name__, task)
+        ack = self._enqueue(task)
+        if ack:
+            ctx.log.debug("%s: task %s enqueued",
+                          self.__class__.__name__, task)
 
     def _enqueue(self, task):
         raise NotImplementedError("abstract queue")
