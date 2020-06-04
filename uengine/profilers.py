@@ -1,8 +1,14 @@
 import cProfile
 import io
-import line_profiler
 import pstats
 import functools
+import warnings
+
+try:
+    import line_profiler
+except ImportError:
+    warnings.warn("Could not import line_profiler. Line profiling is disabled")
+    line_profiler = None
 
 from . import ctx
 from .api import get_boolean_request_param
@@ -12,7 +18,7 @@ from datetime import datetime
 
 def before_request():
     if get_boolean_request_param("profile"):
-        if ctx.line_profiler.functions:
+        if line_profiler and ctx.line_profiler.functions:
             g.line_profiler = line_profiler.LineProfiler(*ctx.line_profiler.functions)
             g.line_profiler.enable()
         g.profiler = cProfile.Profile()
