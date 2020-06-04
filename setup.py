@@ -24,6 +24,7 @@ setup(
         "pylint",
         "mongomock",
         "requests",
+        "mtprof",
     ],
     entry_points={
         "console_scripts": [

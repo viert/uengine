@@ -186,7 +186,7 @@ class Base:
                 flask.before_request(profilers.before_request)
                 flask.after_request(profilers.after_request)
             except ImportError:
-                ctx.log.error(
+                ctx.log.exception(
                     "error importing profiler, profiling will be disabled")
 
             # pylint: disable=unused-variable
