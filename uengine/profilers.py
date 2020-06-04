@@ -1,4 +1,5 @@
 import cProfile
+import mtprof
 import io
 import line_profiler
 import pstats
@@ -15,7 +16,10 @@ def before_request():
         if ctx.line_profiler.functions:
             g.line_profiler = line_profiler.LineProfiler(*ctx.line_profiler.functions)
             g.line_profiler.enable()
-        g.profiler = cProfile.Profile()
+        if get_boolean_request_param("profile_threads"):
+            g.profiler = mtprof.Profile()
+        else:
+            g.profiler = cProfile.Profile()
         g.profiler.enable()
 
 
