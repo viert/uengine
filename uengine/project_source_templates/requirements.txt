@@ -1,5 +1,5 @@
 uengine
-mongomock
+mongomock>=3.19.0
 requests
 
 -r {{ project_name }}/requirements.txt
