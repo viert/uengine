@@ -145,6 +145,8 @@ class AbstractModel(metaclass=ModelMeta):
         "INDEXES",
     )
 
+    USE_INITIAL_STATE = False
+
     _MERGERS = {
         "FIELDS": merge_set,
         "REJECTED_FIELDS": merge_set,
@@ -185,8 +187,14 @@ class AbstractModel(metaclass=ModelMeta):
                 if hook_inst:
                     self._hooks.append(hook_inst)
 
-    def __set_initial_state(self):
+    def set_initial_state(self):
+        # this may be highly ineffective and is higlhy recommended
+        # to be overriden
         setattr(self, "_initial_state", deepcopy(self.to_dict(self.FIELDS)))
+
+    def __set_initial_state(self):
+        if self.USE_INITIAL_STATE:
+            self.set_initial_state()
 
     @classmethod
     def register_model_hook(cls, model_hook_class, *args, **kwargs):
