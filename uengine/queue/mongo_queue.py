@@ -83,11 +83,11 @@ class MongoQueue(AbstractQueue):
 
     def ack(self, task_id):
         # generate ack
-        ctx.log.debug("ACK {ins_id: %s, chan: %s}", task_id, self.ackchannel)
+        ctx.log.debug("generating ACK {ins_id: %s, chan: %s}", task_id, self.ackchannel)
         self.coll_tasks.insert_one(
             {"ins_id": task_id, "chan": self.ackchannel})
         # remove task doc
-        ctx.log.debug("DELETE {_id: %s}", task_id)
+        ctx.log.debug("removing task doc from collection {_id: %s}", task_id)
         self.coll_tasks.delete_one({"_id": task_id})
 
     def publish(self, chan, message):
@@ -139,11 +139,17 @@ class MongoQueue(AbstractQueue):
         while True:
             items = self.coll_tasks.find(
                 {"chan": self.msgchannel}).sort("created_at", ASCENDING)
-            if items.count() > 0:
+
+            cnt = items.count()
+            if cnt > 0:
+                ctx.log.debug("processing %d tasks from task collection", cnt)
                 for item in items:
                     task = BaseTask.from_message(item["data"])
-                    self.ack(item["_id"])
+                    ctx.log.debug("task %s created from item %s", task.id, item)
+                    ctx.log.debug("setting task %s received by", task.id)
                     task.set_recv_by(self.msgchannel[len(self.prefix) + 1:])
+                    ctx.log.debug("sending ack for task %s", task.id)
+                    self.ack(item["_id"])
                     yield task
             else:
                 sleep(0.1)
