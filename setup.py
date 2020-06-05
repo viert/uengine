@@ -6,7 +6,7 @@ setup(
 <<<<<<< HEAD
     version="3.5.24",
 =======
-    version="3.6.0",
+    version="3.6.1",
 >>>>>>> bb1853d72321d2b36318445a74b9840462933c85
     description="a micro webframework based on flask and pymongo",
     url="https://github.com/viert/uengine",
