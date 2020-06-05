@@ -3,7 +3,11 @@ from setuptools import setup, find_packages
 
 setup(
     name="uengine",
+<<<<<<< HEAD
     version="3.5.24",
+=======
+    version="3.6.0",
+>>>>>>> bb1853d72321d2b36318445a74b9840462933c85
     description="a micro webframework based on flask and pymongo",
     url="https://github.com/viert/uengine",
     author="Pavel Vorobyov",
@@ -24,6 +28,7 @@ setup(
         "pylint",
         "mongomock",
         "requests",
+        "mtprof",
     ],
     entry_points={
         "console_scripts": [
