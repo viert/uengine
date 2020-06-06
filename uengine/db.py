@@ -247,14 +247,12 @@ class _DB:
     def conn(self):
         if self._conn is None:
             self.init_conn()
-        ctx.log.debug("using connection %d", id(self._conn))
         return self._conn
 
     @property
     def ro_conn(self):
         if self._ro_conn is None:
             self.init_ro_conn()
-        ctx.log.debug("using ro connection %d", id(self._ro_conn))
         return self._ro_conn
 
     @intercept_mongo_errors_ro
