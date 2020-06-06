@@ -262,7 +262,6 @@ class _DB:
                 query = {'_id': ObjectId(query)}
             except InvalidId:
                 pass
-        ctx.log.debug("get_obj coll=%s, query=%s", collection, query)
         data = self.ro_conn[collection].find_one(query, session=self._session)
         if data:
             if self._shard_id:
@@ -273,23 +272,18 @@ class _DB:
 
     @intercept_mongo_errors_ro
     def get_obj_id(self, collection, query):
-        ctx.log.debug("get_obj_id coll=%s, query=%s", collection, query)
         return self.ro_conn[collection].find_one(query, projection=(), session=self._session)['_id']
 
     @intercept_mongo_errors_ro
     def get_objs(self, cls, collection, query, **kwargs):
         if self._session:
             kwargs["session"] = self._session
-            ctx.log.debug("get_objs using session %d", id(self._session))
-        ctx.log.debug("get_objs coll=%s, query=%s", collection, query)
         cursor = self.ro_conn[collection].find(query, **kwargs)
         return ObjectsCursor(cursor, cls, shard_id=self._shard_id)
 
     @intercept_mongo_errors_ro
     def get_objs_projected(self, collection, query, projection, **kwargs):
-        ctx.log.debug("get_objs_projected coll=%s, query=%s", collection, query)
         if self._session:
-            ctx.log.debug("get_objs_projected using session %d", id(self._session))
             kwargs["session"] = self._session
         cursor = self.ro_conn[collection].find(
             query, projection=projection, **kwargs)
@@ -297,7 +291,6 @@ class _DB:
 
     @intercept_mongo_errors_ro
     def get_aggregated(self, collection, pipeline, **kwargs):
-        ctx.log.debug("get_aggregated coll=%s, pipeline=%s", collection, pipeline)
         if self._session:
             kwargs["session"] = self._session
         cursor = self.ro_conn[collection].aggregate(pipeline, **kwargs)
@@ -321,7 +314,6 @@ class _DB:
 
     @intercept_mongo_errors_rw
     def save_obj(self, obj):
-        ctx.log.debug("save_obj %s", obj)
         if obj.is_new:
             # object to_dict() method should always return all fields
             data = obj.to_dict(include_restricted=True)
@@ -336,7 +328,6 @@ class _DB:
 
     @intercept_mongo_errors_rw
     def delete_obj(self, obj):
-        ctx.log.debug("delete_obj %s", obj)
         if obj.is_new:
             return
         self.conn[obj.collection].delete_one(
@@ -348,7 +339,6 @@ class _DB:
         if when:
             assert "_id" not in when
             query.update(when)
-        ctx.log.debug("find_and_update_obj %s, query=%s, update=%s", obj, query, update)
 
         new_data = self.conn[obj.collection].find_one_and_update(
             query,
@@ -362,12 +352,10 @@ class _DB:
 
     @intercept_mongo_errors_rw
     def delete_query(self, collection, query):
-        ctx.log.debug("delete_query coll=%s, query=%s", collection, query)
         return self.conn[collection].delete_many(query, session=self._session)
 
     @intercept_mongo_errors_rw
     def update_query(self, collection, query, update):
-        ctx.log.debug("delete_query coll=%s, query=%s, update=%s", collection, query, update)
         return self.conn[collection].update_many(query, update, session=self._session)
 
     # SESSIONS
