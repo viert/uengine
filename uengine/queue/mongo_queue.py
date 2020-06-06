@@ -138,7 +138,7 @@ class MongoQueue(AbstractQueue):
         resub_at = now() + resub_interval
         while True:
             items = self.coll_tasks.find(
-                {"chan": self.msgchannel}).sort("created_at", ASCENDING).all()
+                {"chan": self.msgchannel}).sort("created_at", ASCENDING)
 
             cnt = items.count()
             if cnt > 0:
