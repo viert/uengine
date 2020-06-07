@@ -3,7 +3,6 @@ import mongomock
 from unittest import TestCase
 from uengine import ctx
 from uengine.db import DB
-from {{project_name}}.tasks.worker import run_task
 
 
 class MongoMockTest(TestCase):
@@ -52,7 +51,3 @@ class MongoMockTest(TestCase):
             pass
         self.mongo_patcher.stop()
         super().tearDown()
-
-    def run_tasks(self):
-        for task in ctx.queue.tasks:
-            run_task(task)
