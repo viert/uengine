@@ -24,7 +24,7 @@ database = {
     "meta": {
         "uri": "mongodb://localhost",
         "pymongo_extra": pymongo_extra,
-        "dbname": "{{ project_name }}_dev",
+        "dbname": "{{ project_name }}_dev_meta",
     },
     "shards": {}
 }

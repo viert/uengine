@@ -1,8 +1,10 @@
 from commands import Command
-from {{project_name}}.tasks.worker import process_tasks
+# The Worker class should be a subclass of uengine.tasks.BaseWorker
+from {{project_name}}.tasks.worker import Worker
 
 
 class Tasks(Command):
 
     def run(self):
-        process_tasks()
+        w = Worker()
+        w.process_tasks()
